@@ -1,0 +1,14 @@
+{
+  "name": "DOVIC AI Restaurant OS",
+  "short_name": "DOVIC AI",
+  "description": "AI-powered restaurant management via WhatsApp",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#25D366",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

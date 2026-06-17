@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: dovic-restaurant-os-backend
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_SECRET_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: DOVIC_WA_PROVIDER
+        value: mock
+      - key: DAILY_REPORT_HOUR
+        value: "6"
+      - key: REPORT_TIMEZONE
+        value: Asia/Kolkata
+    healthCheckPath: /health
