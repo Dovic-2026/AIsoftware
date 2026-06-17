@@ -17,7 +17,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables ready")
+    except Exception as e:
+        logger.warning(f"DB create_all skipped: {e}")
     os.makedirs("uploads/menu", exist_ok=True)
     os.makedirs("uploads/receipts", exist_ok=True)
     logger.info("DOVIC AI Restaurant OS — Backend Ready")
