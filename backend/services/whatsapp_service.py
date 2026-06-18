@@ -192,7 +192,13 @@ async def _handle_onboarding(phone: str, text: str, lower: str, session: models.
         session.state = "awaiting_restaurant_name"
         session.context = {}
         db.commit()
-        return "👋 Welcome to *DOVIC AI Restaurant OS!*\n\nI'm your AI restaurant assistant 🍽️\n\nWhat's your *restaurant name*?"
+        return (
+            "👋 Welcome to *DOVIC AI Restaurant OS!* 🍽️\n\n"
+            "Manage your restaurant via WhatsApp — sales, stock, staff & AI reports.\n\n"
+            "📱 *Step 1:* Register your restaurant here:\n"
+            "https://aisoftware-ashen.vercel.app/login?mode=register\n\n"
+            "Once registered, reply *'Link'* and I'll connect your WhatsApp to your account."
+        )
 
     if session.state == "awaiting_restaurant_name":
         ctx["restaurant_name"] = text
@@ -218,7 +224,12 @@ async def _handle_onboarding(phone: str, text: str, lower: str, session: models.
 
         session.context = ctx
         db.commit()
-        return f"I found your restaurant info. Please complete setup in the app at *aisoftware-ashen.vercel.app/setup*\n\nOr ask your restaurant owner to link this number. Type *'Help'* anytime."
+        return (
+            "⚠️ *Your restaurant is not registered yet.*\n\n"
+            "👇 Tap below to create your free account and set up your restaurant:\n\n"
+            "https://aisoftware-ashen.vercel.app/login?mode=register\n\n"
+            "Once registered, come back here and type *'Hi'* to link your WhatsApp."
+        )
 
     return "👋 Send *'Hi'* to get started with DOVIC AI!"
 
