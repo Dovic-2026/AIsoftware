@@ -19,33 +19,17 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
 }
 
-/* Mobile phone shell */
+/* Full-screen app shell */
 .phone-shell {
-  width: 393px;
-  height: 852px;
+  width: 100%;
+  min-height: 100dvh;
   background: #fff;
-  border-radius: 50px;
-  box-shadow: 0 30px 80px rgba(0,0,0,.25), 0 0 0 1px rgba(0,0,0,.1);
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-@media (max-width: 420px) {
-  .phone-shell {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-    box-shadow: none;
-    position: static;
-    transform: none;
-  }
-  body { background: #fff; }
-}
+body { background: #fff; }
 
 /* Scrollbar */
 .hide-scroll::-webkit-scrollbar { display: none; }

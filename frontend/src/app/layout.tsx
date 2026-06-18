@@ -12,11 +12,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
         <title>DOVIC AI Restaurant OS</title>
         <meta name="description" content="Manage your restaurant via WhatsApp" />
         <meta name="theme-color" content="#075E54" />
         <link rel="manifest" href="/manifest.json" />
+        {/* PWA iOS */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="DOVIC AI" />
+        <link rel="apple-touch-icon" href="/logo.svg" />
+        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
       </head>
       <body>
         <QueryClientProvider client={queryClient}>

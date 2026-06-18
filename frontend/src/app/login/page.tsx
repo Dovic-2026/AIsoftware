@@ -42,14 +42,10 @@ function LoginForm() {
 
   return (
     <div className="phone-shell bg-white">
-      <div className="h-14 flex items-end justify-between px-7 pb-2.5 flex-shrink-0">
-        <span className="text-[15px] font-bold">9:41</span>
-        <div className="flex gap-1.5 items-center text-lg">📶🛜🔋</div>
-      </div>
-
       <div className="flex-1 overflow-y-auto hide-scroll">
-        <div className="bg-gradient-to-br from-[#075E54] to-[#25D366] px-8 py-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-2xl font-black text-white mx-auto mb-4">D</div>
+        <div className="bg-gradient-to-br from-[#075E54] to-[#25D366] px-8 py-16 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="DOVIC AI" className="w-20 h-20 mx-auto mb-4 drop-shadow-xl" />
           <h1 className="text-xl font-extrabold text-white mb-1">DOVIC AI Restaurant OS</h1>
           <p className="text-sm text-white/75">Manage your restaurant via WhatsApp</p>
         </div>
@@ -155,7 +151,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="phone-shell flex items-center justify-center"><div className="text-sm text-gray-400">Loading...</div></div>}>
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-dvh"><div className="text-sm text-gray-400">Loading...</div></div>}>
       <LoginForm />
     </Suspense>
   );

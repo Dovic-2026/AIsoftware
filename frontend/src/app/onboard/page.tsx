@@ -21,18 +21,13 @@ export default function OnboardPage() {
 
   return (
     <div className="phone-shell bg-white">
-      {/* Status Bar */}
-      <div className="h-14 flex items-end justify-between px-7 pb-2.5 flex-shrink-0">
-        <span className="text-[15px] font-bold">9:41</span>
-        <div className="flex gap-1.5 items-center text-lg">📶🛜🔋</div>
-      </div>
-
       <div className="flex-1 overflow-y-auto hide-scroll">
         {/* Hero */}
         <div className="bg-gradient-to-br from-[#075E54] via-[#128C7E] to-[#25D366] px-8 py-14 text-center relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5" />
           <div className="absolute -bottom-16 -left-8 w-44 h-44 rounded-full bg-white/4" />
-          <div className="w-20 h-20 rounded-3xl bg-white/15 border border-white/25 backdrop-blur flex items-center justify-center text-3xl font-black text-white mx-auto mb-5 relative z-10">D</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="DOVIC AI" className="w-20 h-20 mx-auto mb-5 relative z-10 drop-shadow-xl" />
           <h1 className="text-2xl font-extrabold text-white leading-tight mb-3 relative z-10">Restaurant Management<br />through WhatsApp</h1>
           <p className="text-sm text-white/80 leading-relaxed relative z-10">DOVIC AI connects to your WhatsApp. Manage your entire restaurant by just sending messages — no new app to learn.</p>
           <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-4 py-2 mt-4 text-xs text-white font-semibold relative z-10">

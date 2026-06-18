@@ -36,10 +36,6 @@ export default function SetupPage() {
 
   return (
     <div className="phone-shell bg-white">
-      <div className="h-14 flex items-end justify-between px-7 pb-2.5 flex-shrink-0">
-        <span className="text-[15px] font-bold">9:41</span>
-        <div className="flex gap-1.5 items-center text-lg">📶🛜🔋</div>
-      </div>
 
       {/* Progress */}
       <div className="px-5 py-4 border-b border-gray-100 flex-shrink-0">

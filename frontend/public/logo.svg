@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#075E54"/>
+      <stop offset="100%" style="stop-color:#25D366"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.25"/>
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="200" height="200" rx="44" fill="url(#bg)"/>
+  <!-- Shine overlay -->
+  <rect width="200" height="200" rx="44" fill="url(#shine)"/>
+  <!-- Fork & spoon icon (restaurant) -->
+  <g fill="none" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Fork left -->
+    <line x1="72" y1="52" x2="72" y2="148"/>
+    <line x1="60" y1="52" x2="60" y2="82"/>
+    <line x1="84" y1="52" x2="84" y2="82"/>
+    <path d="M60 82 Q72 95 84 82"/>
+    <!-- Knife/spoon right -->
+    <line x1="128" y1="52" x2="128" y2="148"/>
+    <ellipse cx="128" cy="67" rx="12" ry="18"/>
+  </g>
+  <!-- AI dot accent -->
+  <circle cx="150" cy="58" r="10" fill="#25D366" opacity="0.9"/>
+  <circle cx="150" cy="58" r="5" fill="white"/>
+</svg>

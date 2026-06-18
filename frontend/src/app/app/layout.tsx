@@ -17,11 +17,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="phone-shell bg-gray-50 flex flex-col">
-      {/* Status Bar */}
-      <div className="h-14 bg-white flex items-end justify-between px-7 pb-2.5 flex-shrink-0 border-b border-gray-100">
-        <span className="text-[15px] font-bold" id="status-time">9:41</span>
-        <div className="flex gap-1.5 items-center text-lg">📶🛜🔋</div>
-      </div>
       <div className="flex-1 overflow-hidden flex flex-col">
         {children}
       </div>
