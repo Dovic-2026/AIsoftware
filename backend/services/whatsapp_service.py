@@ -186,50 +186,205 @@ async def handle_incoming_message(
 
 
 async def _handle_onboarding(phone: str, text: str, lower: str, session: models.WhatsAppSession, db: Session) -> str:
+    import re as _re
+    from auth import hash_password, create_access_token
     ctx = session.context or {}
 
-    if lower in ("hi", "hello", "hey", "start"):
-        session.state = "awaiting_restaurant_name"
+    # ── Step 0: Greeting ──────────────────────────────────────────────────────
+    if lower in ("hi", "hello", "hey", "start", "link"):
+        # Check if already linked
+        existing = db.query(models.WhatsAppSession).filter(
+            models.WhatsAppSession.phone_number == phone,
+            models.WhatsAppSession.restaurant_id != None
+        ).first()
+        if existing and existing.restaurant_id:
+            restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == existing.restaurant_id).first()
+            if restaurant:
+                session.restaurant_id = existing.restaurant_id
+                session.state = "idle"
+                db.commit()
+                return f"✅ *Already linked to {restaurant.name}!*\n\nType *'Help'* to see all commands 🚀"
+
+        session.state = "reg_name"
         session.context = {}
         db.commit()
         return (
-            "👋 Welcome to *DOVIC AI Restaurant OS!* 🍽️\n\n"
-            "Manage your restaurant via WhatsApp — sales, stock, staff & AI reports.\n\n"
-            "📱 *Step 1:* Register your restaurant here:\n"
-            "https://aisoftware-ashen.vercel.app/login?mode=register\n\n"
-            "Once registered, reply *'Link'* and I'll connect your WhatsApp to your account."
+            "👋 *Welcome to DOVIC AI Restaurant OS!* 🍽️\n\n"
+            "Let me set up your restaurant in just 4 quick steps — right here on WhatsApp!\n\n"
+            "━━━━━━━━━━━━━━━\n"
+            "👤 *Step 1 of 4*\n"
+            "What is your *full name*?"
         )
 
-    if session.state == "awaiting_restaurant_name":
-        ctx["restaurant_name"] = text
-        session.state = "awaiting_phone"
-        session.context = ctx
-        db.commit()
-        return f"Great! *{text}* 🎉\n\nWhat's your restaurant phone number?"
-
-    if session.state == "awaiting_phone":
-        ctx["phone"] = text
-        session.state = "setup_complete"
-        # Try to find a restaurant with this phone
-        restaurant = db.query(models.Restaurant).filter(models.Restaurant.phone == text).first()
-        if restaurant:
-            member = db.query(models.RestaurantMember).filter(
-                models.RestaurantMember.restaurant_id == restaurant.id
-            ).first()
-            if member:
-                session.restaurant_id = restaurant.id
-                session.state = "idle"
-                db.commit()
-                return f"✅ *Linked to {restaurant.name}!*\n\nYou're all set. Type *'Help'* to see what I can do 🚀"
-
+    # ── Step 1: Full Name ─────────────────────────────────────────────────────
+    if session.state == "reg_name":
+        if len(text.strip()) < 2:
+            return "Please enter your full name (at least 2 characters)."
+        ctx["full_name"] = text.strip()
+        session.state = "reg_email"
         session.context = ctx
         db.commit()
         return (
-            "⚠️ *Your restaurant is not registered yet.*\n\n"
-            "👇 Tap below to create your free account and set up your restaurant:\n\n"
-            "https://aisoftware-ashen.vercel.app/login?mode=register\n\n"
-            "Once registered, come back here and type *'Hi'* to link your WhatsApp."
+            f"Nice to meet you, *{ctx['full_name']}*! 👋\n\n"
+            "━━━━━━━━━━━━━━━\n"
+            "📧 *Step 2 of 4*\n"
+            "What is your *email address*?\n\n"
+            "_This will be your login email for the dashboard._"
         )
+
+    # ── Step 2: Email ─────────────────────────────────────────────────────────
+    if session.state == "reg_email":
+        email = text.strip().lower()
+        if not _re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
+            return "❌ That doesn't look like a valid email. Please send your email address (e.g. raj@gmail.com)"
+        existing_user = db.query(models.User).filter(models.User.email == email).first()
+        if existing_user:
+            # User exists — ask for password to link
+            ctx["email"] = email
+            ctx["existing_user"] = True
+            session.state = "reg_existing_password"
+            session.context = ctx
+            db.commit()
+            return (
+                f"✅ Found an account for *{email}*!\n\n"
+                "━━━━━━━━━━━━━━━\n"
+                "🔑 *Enter your password* to link your WhatsApp:"
+            )
+        ctx["email"] = email
+        session.state = "reg_password"
+        session.context = ctx
+        db.commit()
+        return (
+            "━━━━━━━━━━━━━━━\n"
+            "🔑 *Step 3 of 4*\n"
+            "Create a *password* for your account:\n\n"
+            "_Minimum 6 characters. You'll use this to log into the dashboard._"
+        )
+
+    # ── Step 2b: Existing user login ──────────────────────────────────────────
+    if session.state == "reg_existing_password":
+        from auth import verify_password
+        user = db.query(models.User).filter(models.User.email == ctx.get("email")).first()
+        if not user or not verify_password(text.strip(), user.hashed_password):
+            return "❌ Wrong password. Please try again or type *'Hi'* to start over."
+        # Link WhatsApp to existing restaurant if any
+        membership = db.query(models.RestaurantMember).filter(
+            models.RestaurantMember.user_id == user.id
+        ).first()
+        if membership:
+            session.restaurant_id = membership.restaurant_id
+            session.state = "idle"
+            session.context = {}
+            db.commit()
+            restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == membership.restaurant_id).first()
+            return f"✅ *Linked to {restaurant.name}!*\n\nYou're all set. Type *'Help'* to see what I can do 🚀"
+        # User exists but no restaurant — go to restaurant setup
+        ctx["user_id"] = user.id
+        session.state = "reg_restaurant_name"
+        session.context = ctx
+        db.commit()
+        return (
+            "━━━━━━━━━━━━━━━\n"
+            "🏪 *Set up your restaurant*\n"
+            "What is your *restaurant name*?"
+        )
+
+    # ── Step 3: Password ──────────────────────────────────────────────────────
+    if session.state == "reg_password":
+        if len(text.strip()) < 6:
+            return "❌ Password must be at least 6 characters. Try again:"
+        ctx["password"] = text.strip()
+        session.state = "reg_restaurant_name"
+        session.context = ctx
+        db.commit()
+        return (
+            "━━━━━━━━━━━━━━━\n"
+            "🏪 *Step 4 of 4*\n"
+            "What is your *restaurant name*?\n\n"
+            "_e.g. Raj's Biryani House, Annapoorna Cafe_"
+        )
+
+    # ── Step 4: Restaurant Name → Auto Register ───────────────────────────────
+    if session.state == "reg_restaurant_name":
+        if len(text.strip()) < 2:
+            return "Please enter your restaurant name (at least 2 characters)."
+        ctx["restaurant_name"] = text.strip()
+
+        try:
+            # Create user if new
+            if ctx.get("user_id"):
+                user = db.query(models.User).filter(models.User.id == ctx["user_id"]).first()
+            else:
+                user = models.User(
+                    email=ctx["email"],
+                    full_name=ctx["full_name"],
+                    phone=phone,
+                    hashed_password=hash_password(ctx["password"]),
+                    is_active=True,
+                    is_verified=True,
+                )
+                db.add(user)
+                db.flush()
+
+            # Create restaurant
+            import re as re2
+            base_slug = re2.sub(r"[^\w\s-]", "", ctx["restaurant_name"].lower().strip())
+            base_slug = re2.sub(r"[\s_-]+", "-", base_slug)[:50]
+            slug = base_slug
+            count = 1
+            while db.query(models.Restaurant).filter(models.Restaurant.slug == slug).first():
+                slug = f"{base_slug}-{count}"
+                count += 1
+
+            restaurant = models.Restaurant(
+                name=ctx["restaurant_name"],
+                slug=slug,
+                phone=phone,
+                plan="starter",
+                whatsapp_number=phone,
+            )
+            db.add(restaurant)
+            db.flush()
+
+            member = models.RestaurantMember(
+                restaurant_id=restaurant.id,
+                user_id=user.id,
+                role=models.UserRole.owner,
+            )
+            db.add(member)
+
+            # Default menu categories
+            for cat in [
+                models.MenuCategory(restaurant_id=restaurant.id, name="Starters", emoji="🍢", sort_order=1),
+                models.MenuCategory(restaurant_id=restaurant.id, name="Main Course", emoji="🍛", sort_order=2),
+                models.MenuCategory(restaurant_id=restaurant.id, name="Beverages", emoji="🥤", sort_order=3),
+                models.MenuCategory(restaurant_id=restaurant.id, name="Desserts", emoji="🍮", sort_order=4),
+            ]:
+                db.add(cat)
+
+            session.restaurant_id = restaurant.id
+            session.state = "idle"
+            session.context = {}
+            db.commit()
+
+            return (
+                f"🎉 *{ctx['restaurant_name']} is now live on DOVIC AI!*\n\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"✅ Account created\n"
+                f"✅ Restaurant registered\n"
+                f"✅ WhatsApp linked\n\n"
+                f"📱 *Login to your dashboard:*\n"
+                f"https://aisoftware-ashen.vercel.app/login\n\n"
+                f"📧 Email: {ctx['email']}\n\n"
+                f"Type *'Help'* to see all WhatsApp commands 🚀"
+            )
+
+        except Exception as e:
+            db.rollback()
+            session.state = "idle"
+            session.context = {}
+            db.commit()
+            return f"❌ Registration failed: {str(e)}\n\nType *'Hi'* to try again."
 
     return "👋 Send *'Hi'* to get started with DOVIC AI!"
 
