@@ -40,8 +40,8 @@ ALLOWED_ORIGINS = [
     settings.FRONTEND_URL,
     "http://localhost:3000",
     "http://localhost:3001",
-    "https://*.vercel.app",
-    "https://*.onrender.com",
+    "https://aisoftware-ashen.vercel.app",
+    "https://ai-software-git-master-dovic.vercel.app",
 ]
 if settings.ENVIRONMENT == "development":
     ALLOWED_ORIGINS.append("*")
