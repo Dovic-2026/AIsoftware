@@ -144,7 +144,17 @@ async def handle_incoming_message(
 
     # ── Registration flow ─────────────────────────────────────────────────────
     if not restaurant:
-        return await _handle_onboarding(phone, text, lower, session, db)
+        # Auto-link if the user registered via web app — match by phone number
+        clean_phone = phone.lstrip("+")
+        linked = (
+            db.query(models.Restaurant).filter(models.Restaurant.phone.ilike(f"%{clean_phone[-10:]}%")).first()
+        )
+        if linked:
+            session.restaurant_id = linked.id
+            db.commit()
+            restaurant = linked
+        else:
+            return await _handle_onboarding(phone, text, lower, session, db)
 
     # ── Commands ──────────────────────────────────────────────────────────────
 
