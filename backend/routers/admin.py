@@ -363,7 +363,7 @@ ADMIN_HTML = """<!DOCTYPE html>
 </div>
 
 <!-- Create User Modal -->
-<div id="createUserModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+<div id="createUserModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
   <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:32px;width:400px;max-width:90vw">
     <div style="font-size:16px;font-weight:800;color:#f1f5f9;margin-bottom:20px">Create New User</div>
     <label>Full Name *</label>
@@ -545,7 +545,7 @@ function renderRestaurants(list) {
           ? `<button class="action-btn danger" onclick="toggleRestaurant(${r.id},false)">Suspend</button>`
           : `<button class="action-btn primary" onclick="toggleRestaurant(${r.id},true)">Activate</button>`}
         <button class="action-btn" onclick="openEditRest(${r.id})" style="background:#1e3a5f;color:#60a5fa">Edit</button>
-        <button class="action-btn danger" onclick="deleteRestaurant(${r.id},'${r.name.replace(/'/g,"\\'")}')">Delete</button>
+        <button class="action-btn danger" data-del-id="${r.id}" onclick="deleteRestaurant(this)">Delete</button>
       </td>
     </tr>`).join('');
 }
@@ -558,8 +558,8 @@ function renderUsers(list) {
       <td style="color:#94a3b8">${u.phone || '—'}</td>
       <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : '—'}</td>
       <td>
-        <button class="action-btn" onclick="openReset(${u.id})">Reset Password</button>
-        <button class="action-btn danger" onclick="deleteUser(${u.id},'${u.full_name}')">Delete</button>
+        <button class="action-btn" data-uid="${u.id}" onclick="openReset(this)">Reset Password</button>
+        <button class="action-btn danger" data-uid="${u.id}" onclick="deleteUser(this)">Delete</button>
       </td>
     </tr>`).join('');
 }
@@ -581,11 +581,13 @@ async function toggleRestaurant(id, active) {
   } catch(e) { showToast('Error', '#ef4444'); }
 }
 
-async function deleteRestaurant(id, name) {
-  if (!confirm('⚠️ PERMANENTLY DELETE "' + name + '"?\n\nThis will delete ALL data: menu, inventory, sales, staff, expenses.\n\nThis CANNOT be undone!')) return;
-  if (!confirm('Are you absolutely sure? Type OK to confirm.\n\nDeleting: ' + name)) return;
+async function deleteRestaurant(btn) {
+  const id = btn.dataset.delId;
+  const row = btn.closest('tr');
+  const name = row ? row.querySelector('strong').textContent : 'this restaurant';
+  if (!confirm('PERMANENTLY DELETE "' + name + '"?\n\nThis deletes ALL data: menu, inventory, sales, staff.\n\nCANNOT be undone!')) return;
   try {
-    await api('DELETE', `/admin/restaurants/${id}`);
+    await api('DELETE', '/admin/restaurants/' + id);
     showToast('Restaurant deleted!');
     await loadRestaurants();
     await loadStats();
@@ -642,8 +644,8 @@ async function createUser() {
   } catch(e) { document.getElementById('createErr').textContent = 'Error: ' + e.message; }
 }
 
-function openReset(userId) {
-  document.getElementById('resetUserId').value = userId;
+function openReset(btn) {
+  document.getElementById('resetUserId').value = btn.dataset.uid;
   document.getElementById('resetPassword').value = '';
   document.getElementById('resetModal').style.display = 'flex';
 }
@@ -658,10 +660,13 @@ async function doReset() {
   } catch(e) { showToast('Error', '#ef4444'); }
 }
 
-async function deleteUser(id, name) {
+async function deleteUser(btn) {
+  const id = btn.dataset.uid;
+  const row = btn.closest('tr');
+  const name = row ? row.querySelector('strong').textContent : 'this user';
   if (!confirm('Delete user "' + name + '"? This cannot be undone.')) return;
   try {
-    await api('DELETE', `/admin/users/${id}`);
+    await api('DELETE', '/admin/users/' + id);
     showToast('User deleted!');
     await loadUsers();
     await loadStats();
