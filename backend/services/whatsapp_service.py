@@ -221,75 +221,19 @@ async def _handle_onboarding(phone: str, text: str, lower: str, session: models.
         if len(text.strip()) < 2:
             return "Please enter your full name (at least 2 characters)."
         ctx["full_name"] = text.strip()
-        session.state = "reg_email"
+        ctx["email"] = f"{phone.lstrip('+')}@wa.dovic.ai"  # auto-generate email from phone
+        session.state = "reg_restaurant_name"
         session.context = ctx
         db.commit()
         return (
             f"Nice to meet you, *{ctx['full_name']}*! 👋\n\n"
             "━━━━━━━━━━━━━━━\n"
-            "📧 *Step 2 of 4*\n"
-            "What is your *email address*?\n\n"
-            "_This will be your login email for the dashboard._"
+            "🏪 *Step 2 of 3*\n"
+            "What is your *restaurant name*?\n\n"
+            "_e.g. Raj's Biryani House, Annapoorna Cafe_"
         )
 
-    # ── Step 2: Email ─────────────────────────────────────────────────────────
-    if session.state == "reg_email":
-        email = text.strip().lower()
-        if not _re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
-            return "❌ That doesn't look like a valid email. Please send your email address (e.g. raj@gmail.com)"
-        existing_user = db.query(models.User).filter(models.User.email == email).first()
-        if existing_user:
-            # User exists — ask for password to link
-            ctx["email"] = email
-            ctx["existing_user"] = True
-            session.state = "reg_existing_password"
-            session.context = ctx
-            db.commit()
-            return (
-                f"✅ Found an account for *{email}*!\n\n"
-                "━━━━━━━━━━━━━━━\n"
-                "🔑 *Enter your password* to link your WhatsApp:"
-            )
-        ctx["email"] = email
-        session.state = "reg_password"
-        session.context = ctx
-        db.commit()
-        return (
-            "━━━━━━━━━━━━━━━\n"
-            "🔑 *Step 3 of 4*\n"
-            "Create a *password* for your account:\n\n"
-            "_Minimum 6 characters. You'll use this to log into the dashboard._"
-        )
-
-    # ── Step 2b: Existing user login ──────────────────────────────────────────
-    if session.state == "reg_existing_password":
-        from auth import verify_password
-        user = db.query(models.User).filter(models.User.email == ctx.get("email")).first()
-        if not user or not verify_password(text.strip(), user.hashed_password):
-            return "❌ Wrong password. Please try again or type *'Hi'* to start over."
-        # Link WhatsApp to existing restaurant if any
-        membership = db.query(models.RestaurantMember).filter(
-            models.RestaurantMember.user_id == user.id
-        ).first()
-        if membership:
-            session.restaurant_id = membership.restaurant_id
-            session.state = "idle"
-            session.context = {}
-            db.commit()
-            restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == membership.restaurant_id).first()
-            return f"✅ *Linked to {restaurant.name}!*\n\nYou're all set. Type *'Help'* to see what I can do 🚀"
-        # User exists but no restaurant — go to restaurant setup
-        ctx["user_id"] = user.id
-        session.state = "reg_restaurant_name"
-        session.context = ctx
-        db.commit()
-        return (
-            "━━━━━━━━━━━━━━━\n"
-            "🏪 *Set up your restaurant*\n"
-            "What is your *restaurant name*?"
-        )
-
-    # ── Step 3: Password ──────────────────────────────────────────────────────
+    # ── Step 2: Password ──────────────────────────────────────────────────────
     if session.state == "reg_password":
         if len(text.strip()) < 6:
             return "❌ Password must be at least 6 characters. Try again:"
@@ -299,7 +243,7 @@ async def _handle_onboarding(phone: str, text: str, lower: str, session: models.
         db.commit()
         return (
             "━━━━━━━━━━━━━━━\n"
-            "🏪 *Step 4 of 4*\n"
+            "🏪 *Step 3 of 3*\n"
             "What is your *restaurant name*?\n\n"
             "_e.g. Raj's Biryani House, Annapoorna Cafe_"
         )
@@ -315,11 +259,13 @@ async def _handle_onboarding(phone: str, text: str, lower: str, session: models.
             if ctx.get("user_id"):
                 user = db.query(models.User).filter(models.User.id == ctx["user_id"]).first()
             else:
+                auto_email = ctx.get("email") or f"{phone.lstrip('+').replace(' ','')}@wa.dovic.ai"
+                auto_password = ctx.get("password") or phone[-6:]  # last 6 digits of phone as default password
                 user = models.User(
-                    email=ctx["email"],
-                    full_name=ctx["full_name"],
+                    email=auto_email,
+                    full_name=ctx.get("full_name", "Owner"),
                     phone=phone,
-                    hashed_password=hash_password(ctx["password"]),
+                    hashed_password=hash_password(auto_password),
                     is_active=True,
                     is_verified=True,
                 )
@@ -367,15 +313,18 @@ async def _handle_onboarding(phone: str, text: str, lower: str, session: models.
             session.context = {}
             db.commit()
 
+            final_email = ctx.get("email") or f"{phone.lstrip('+').replace(' ','')}@wa.dovic.ai"
+            final_password = ctx.get("password") or phone[-6:]
             return (
                 f"🎉 *{ctx['restaurant_name']} is now live on DOVIC AI!*\n\n"
                 f"━━━━━━━━━━━━━━━\n"
                 f"✅ Account created\n"
                 f"✅ Restaurant registered\n"
                 f"✅ WhatsApp linked\n\n"
-                f"📱 *Login to your dashboard:*\n"
-                f"https://aisoftware-ashen.vercel.app/login\n\n"
-                f"📧 Email: {ctx['email']}\n\n"
+                f"📱 *Dashboard login:*\n"
+                f"https://aisoftware-ashen.vercel.app/login\n"
+                f"📧 Email: {final_email}\n"
+                f"🔑 Password: {final_password}\n\n"
                 f"Type *'Help'* to see all WhatsApp commands 🚀"
             )
 
