@@ -297,14 +297,21 @@ ADMIN_HTML = """<!DOCTYPE html>
     </div>
   </div>
   <div class="main">
-    <div class="stats-grid" id="statsGrid">
+    <div class="stats-grid">
       <div class="stat-card"><div class="val" id="sTotal">—</div><div class="lbl">Total Restaurants</div></div>
       <div class="stat-card"><div class="val" id="sActive">—</div><div class="lbl">Active Now</div></div>
       <div class="stat-card"><div class="val" id="sUsers">—</div><div class="lbl">Total Users</div></div>
       <div class="stat-card"><div class="val" id="sOrders">—</div><div class="lbl">Total Orders</div></div>
     </div>
 
-    <div class="section">
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:16px">
+      <button id="tabRestBtn" onclick="switchTab('restaurants')" style="padding:8px 20px;border-radius:8px;border:none;background:#22c55e;color:#000;font-weight:700;cursor:pointer;font-size:13px">🏪 Restaurants</button>
+      <button id="tabUsersBtn" onclick="switchTab('users')" style="padding:8px 20px;border-radius:8px;border:none;background:#1e293b;color:#94a3b8;font-weight:700;cursor:pointer;font-size:13px">👤 Users</button>
+    </div>
+
+    <!-- Restaurants Tab -->
+    <div id="tabRestaurants" class="section">
       <div class="section-title" style="justify-content:space-between">
         <span>Restaurants</span>
         <input class="search-bar" placeholder="Search by name..." oninput="filterRestaurants(this.value)" />
@@ -316,6 +323,54 @@ ADMIN_HTML = """<!DOCTYPE html>
         <tbody id="restTable"></tbody>
       </table>
     </div>
+
+    <!-- Users Tab -->
+    <div id="tabUsers" class="section" style="display:none">
+      <div class="section-title" style="justify-content:space-between">
+        <span>Users</span>
+        <button onclick="openCreateUser()" style="padding:8px 18px;border-radius:8px;border:none;background:#22c55e;color:#000;font-weight:700;cursor:pointer;font-size:13px">+ Create User</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="usersTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div id="createUserModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:32px;width:400px;max-width:90vw">
+    <div style="font-size:16px;font-weight:800;color:#f1f5f9;margin-bottom:20px">Create New User</div>
+    <label>Full Name *</label>
+    <input type="text" id="newName" placeholder="Raj Sharma" />
+    <label>Email *</label>
+    <input type="email" id="newEmail" placeholder="raj@restaurant.com" />
+    <label>Password * (min 6 chars)</label>
+    <input type="password" id="newPassword" placeholder="••••••••" />
+    <label>Phone (optional)</label>
+    <input type="tel" id="newPhone" placeholder="+91 98765 43210" />
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="createUser()" style="flex:1;padding:12px;background:#22c55e;color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer">Create User</button>
+      <button onclick="closeCreateUser()" style="flex:1;padding:12px;background:#334155;color:#94a3b8;border:none;border-radius:8px;font-weight:700;cursor:pointer">Cancel</button>
+    </div>
+    <div id="createErr" style="color:#f87171;font-size:12px;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="resetModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:32px;width:380px;max-width:90vw">
+    <div style="font-size:16px;font-weight:800;color:#f1f5f9;margin-bottom:20px">Reset Password</div>
+    <input type="hidden" id="resetUserId" />
+    <label>New Password *</label>
+    <input type="password" id="resetPassword" placeholder="New password (min 6 chars)" />
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="doReset()" style="flex:1;padding:12px;background:#22c55e;color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer">Reset</button>
+      <button onclick="document.getElementById('resetModal').style.display='none'" style="flex:1;padding:12px;background:#334155;color:#94a3b8;border:none;border-radius:8px;font-weight:700;cursor:pointer">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -324,6 +379,7 @@ ADMIN_HTML = """<!DOCTYPE html>
 <script>
 let TOKEN = localStorage.getItem('dovic_admin_token') || '';
 let ALL_RESTAURANTS = [];
+let ALL_USERS = [];
 
 function showToast(msg, color) {
   const t = document.getElementById('toast');
@@ -366,11 +422,20 @@ function logout() {
 async function showDashboard() {
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
-  setInterval(() => {
-    document.getElementById('headerTime').textContent = new Date().toLocaleString('en-IN');
-  }, 1000);
+  setInterval(() => { document.getElementById('headerTime').textContent = new Date().toLocaleString('en-IN'); }, 1000);
   await loadStats();
   await loadRestaurants();
+}
+
+function switchTab(tab) {
+  const isRest = tab === 'restaurants';
+  document.getElementById('tabRestaurants').style.display = isRest ? 'block' : 'none';
+  document.getElementById('tabUsers').style.display = isRest ? 'none' : 'block';
+  document.getElementById('tabRestBtn').style.background = isRest ? '#22c55e' : '#1e293b';
+  document.getElementById('tabRestBtn').style.color = isRest ? '#000' : '#94a3b8';
+  document.getElementById('tabUsersBtn').style.background = isRest ? '#1e293b' : '#22c55e';
+  document.getElementById('tabUsersBtn').style.color = isRest ? '#94a3b8' : '#000';
+  if (!isRest) loadUsers();
 }
 
 async function loadStats() {
@@ -390,53 +455,50 @@ async function loadRestaurants() {
   } catch(e) {}
 }
 
-function filterRestaurants(q) {
-  const filtered = ALL_RESTAURANTS.filter(r =>
-    r.name.toLowerCase().includes(q.toLowerCase()) ||
-    (r.owner_email || '').toLowerCase().includes(q.toLowerCase()) ||
-    (r.city || '').toLowerCase().includes(q.toLowerCase())
-  );
-  renderRestaurants(filtered);
+async function loadUsers() {
+  try {
+    ALL_USERS = await api('GET', '/admin/users');
+    renderUsers(ALL_USERS);
+  } catch(e) {}
 }
 
-function planBadge(p) {
-  return `<span class="badge badge-${p}">${p}</span>`;
-}
-function statusBadge(s) {
-  return `<span class="badge badge-${s}">${s}</span>`;
+function filterRestaurants(q) {
+  renderRestaurants(ALL_RESTAURANTS.filter(r =>
+    r.name.toLowerCase().includes(q.toLowerCase()) ||
+    (r.owner_email || '').toLowerCase().includes(q.toLowerCase())
+  ));
 }
 
 function renderRestaurants(list) {
-  const tbody = document.getElementById('restTable');
-  tbody.innerHTML = list.map(r => `
+  document.getElementById('restTable').innerHTML = list.map(r => `
     <tr>
       <td><strong style="color:#f1f5f9">${r.name}</strong><br><span style="color:#475569;font-size:11px">${r.phone || ''}</span></td>
       <td>${r.owner_name || '—'}<br><span style="color:#475569;font-size:11px">${r.owner_email || '—'}</span></td>
       <td>${r.city || '—'}</td>
-      <td>
-        <select class="inline" onchange="updateRestaurant(${r.id}, 'plan', this.value)">
-          ${['starter','growth','pro','enterprise'].map(p => `<option ${r.plan===p?'selected':''} value="${p}">${p}</option>`).join('')}
-        </select>
-      </td>
-      <td>
-        <select class="inline" onchange="updateRestaurant(${r.id}, 'subscription_status', this.value)">
-          ${['trial','active','suspended','cancelled'].map(s => `<option ${r.subscription_status===s?'selected':''} value="${s}">${s}</option>`).join('')}
-        </select>
-      </td>
-      <td>
-        <select class="inline" onchange="updateRestaurant(${r.id}, 'payment_status', this.value)">
-          ${['pending','paid','overdue','free'].map(s => `<option ${r.payment_status===s?'selected':''} value="${s}">${s}</option>`).join('')}
-        </select>
-      </td>
+      <td><select class="inline" onchange="updateRestaurant(${r.id},'plan',this.value)">${['starter','growth','pro','enterprise'].map(p=>`<option ${r.plan===p?'selected':''} value="${p}">${p}</option>`).join('')}</select></td>
+      <td><select class="inline" onchange="updateRestaurant(${r.id},'subscription_status',this.value)">${['trial','active','suspended','cancelled'].map(s=>`<option ${r.subscription_status===s?'selected':''} value="${s}">${s}</option>`).join('')}</select></td>
+      <td><select class="inline" onchange="updateRestaurant(${r.id},'payment_status',this.value)">${['pending','paid','overdue','free'].map(s=>`<option ${r.payment_status===s?'selected':''} value="${s}">${s}</option>`).join('')}</select></td>
       <td>${r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}</td>
       <td>
         ${r.is_active
-          ? `<button class="action-btn danger" onclick="toggleRestaurant(${r.id}, false)">Suspend</button>`
-          : `<button class="action-btn primary" onclick="toggleRestaurant(${r.id}, true)">Activate</button>`
-        }
+          ? `<button class="action-btn danger" onclick="toggleRestaurant(${r.id},false)">Suspend</button>`
+          : `<button class="action-btn primary" onclick="toggleRestaurant(${r.id},true)">Activate</button>`}
       </td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
+}
+
+function renderUsers(list) {
+  document.getElementById('usersTable').innerHTML = list.map(u => `
+    <tr>
+      <td><strong style="color:#f1f5f9">${u.full_name}</strong></td>
+      <td style="color:#94a3b8">${u.email}</td>
+      <td style="color:#94a3b8">${u.phone || '—'}</td>
+      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : '—'}</td>
+      <td>
+        <button class="action-btn" onclick="openReset(${u.id})">Reset Password</button>
+        <button class="action-btn danger" onclick="deleteUser(${u.id},'${u.full_name}')">Delete</button>
+      </td>
+    </tr>`).join('');
 }
 
 async function updateRestaurant(id, field, value) {
@@ -445,9 +507,7 @@ async function updateRestaurant(id, field, value) {
     showToast('Updated!');
     const r = ALL_RESTAURANTS.find(x => x.id === id);
     if (r) r[field] = value;
-  } catch(e) {
-    showToast('Error: ' + e.message, '#ef4444');
-  }
+  } catch(e) { showToast('Error: ' + e.message, '#ef4444'); }
 }
 
 async function toggleRestaurant(id, active) {
@@ -455,12 +515,57 @@ async function toggleRestaurant(id, active) {
     await api('PATCH', `/admin/restaurants/${id}`, { is_active: active, subscription_status: active ? 'active' : 'suspended' });
     showToast(active ? 'Activated!' : 'Suspended!');
     await loadRestaurants();
-  } catch(e) {
-    showToast('Error', '#ef4444');
-  }
+  } catch(e) { showToast('Error', '#ef4444'); }
 }
 
-// Auto-login if token exists
+function openCreateUser() {
+  document.getElementById('createUserModal').style.display = 'flex';
+  document.getElementById('createErr').textContent = '';
+  ['newName','newEmail','newPassword','newPhone'].forEach(id => document.getElementById(id).value = '');
+}
+function closeCreateUser() { document.getElementById('createUserModal').style.display = 'none'; }
+
+async function createUser() {
+  const name = document.getElementById('newName').value.trim();
+  const email = document.getElementById('newEmail').value.trim();
+  const password = document.getElementById('newPassword').value.trim();
+  const phone = document.getElementById('newPhone').value.trim();
+  if (!name || !email || !password) { document.getElementById('createErr').textContent = 'Name, email and password are required.'; return; }
+  try {
+    await api('POST', '/admin/users', { full_name: name, email, password, phone });
+    showToast('User created!');
+    closeCreateUser();
+    await loadUsers();
+    await loadStats();
+  } catch(e) { document.getElementById('createErr').textContent = 'Error: ' + e.message; }
+}
+
+function openReset(userId) {
+  document.getElementById('resetUserId').value = userId;
+  document.getElementById('resetPassword').value = '';
+  document.getElementById('resetModal').style.display = 'flex';
+}
+async function doReset() {
+  const id = document.getElementById('resetUserId').value;
+  const pw = document.getElementById('resetPassword').value.trim();
+  if (!pw || pw.length < 6) { showToast('Min 6 characters', '#ef4444'); return; }
+  try {
+    await api('PATCH', `/admin/users/${id}/reset-password`, { password: pw });
+    showToast('Password reset!');
+    document.getElementById('resetModal').style.display = 'none';
+  } catch(e) { showToast('Error', '#ef4444'); }
+}
+
+async function deleteUser(id, name) {
+  if (!confirm('Delete user "' + name + '"? This cannot be undone.')) return;
+  try {
+    await api('DELETE', `/admin/users/${id}`);
+    showToast('User deleted!');
+    await loadUsers();
+    await loadStats();
+  } catch(e) { showToast('Error: ' + e.message, '#ef4444'); }
+}
+
 if (TOKEN) showDashboard();
 </script>
 </body>
