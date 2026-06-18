@@ -218,7 +218,7 @@ async def _handle_onboarding(phone: str, text: str, lower: str, session: models.
 
         session.context = ctx
         db.commit()
-        return f"I found your restaurant info. Please complete setup in the app at *dovic.ai/setup*\n\nOr ask your restaurant owner to link this number. Type *'Help'* anytime."
+        return f"I found your restaurant info. Please complete setup in the app at *aisoftware-ashen.vercel.app/setup*\n\nOr ask your restaurant owner to link this number. Type *'Help'* anytime."
 
     return "👋 Send *'Hi'* to get started with DOVIC AI!"
 
@@ -261,7 +261,7 @@ def _help_message() -> str:
 • "Expense: Vegetables ₹3200"
 
 _Works in Tamil, Hindi & English!_
-_For full dashboard: dovic.ai_"""
+_For full dashboard: aisoftware-ashen.vercel.app_"""
 
 
 async def _handle_report(restaurant: models.Restaurant, db: Session) -> str:
