@@ -52,7 +52,7 @@ async def nightly_report_scheduler():
     """Loop forever; fire _send_nightly_reports at 21:00 IST each day."""
     while True:
         now = datetime.now(IST)
-        target = now.replace(hour=21, minute=0, second=0, microsecond=0)
+        target = now.replace(hour=23, minute=0, second=0, microsecond=0)
         if now >= target:
             target = target.replace(day=target.day + 1)
         wait_secs = (target - now).total_seconds()
