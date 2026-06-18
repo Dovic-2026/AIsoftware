@@ -16,6 +16,17 @@ interface Restaurant {
   plan: string;
   role: string;
   whatsapp_connected?: boolean;
+  city?: string;
+  state?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  gst_number?: string;
+  restaurant_type?: string;
+  cuisine_type?: string;
+  whatsapp_number?: string;
+  subscription_status?: string;
+  payment_status?: string;
 }
 
 interface AuthState {
