@@ -58,7 +58,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex-1">
               <div className="text-[14px] font-bold text-green-900">WhatsApp Connected</div>
-              <div className="text-[11px] text-green-700">{restaurant?.whatsapp_phone || "Business number active"}</div>
+              <div className="text-[11px] text-green-700">{restaurant?.whatsapp_number || "Business number active"}</div>
             </div>
             <div className="flex items-center gap-1 bg-green-100 rounded-full px-2.5 py-1">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />

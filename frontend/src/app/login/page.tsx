@@ -136,7 +136,7 @@ function LoginForm() {
                 if (emailInput) emailInput.value = "owner@spicetrail.com";
                 if (passInput) passInput.value = "demo1234";
                 setMode("login");
-                handleSubmit(onSubmit)({ email: "owner@spicetrail.com", password: "demo1234" });
+                handleSubmit(onSubmit)();
               }}
               className="mt-2 w-full py-2 text-xs font-bold text-green-800 bg-green-100 rounded-xl active:bg-green-200 transition-colors"
             >
