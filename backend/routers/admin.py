@@ -171,6 +171,48 @@ def reset_user_password(user_id: int, payload: dict, request: Request, db: Sessi
     return {"success": True}
 
 
+@router.post("/admin/users")
+def create_user_admin(payload: dict, request: Request, db: Session = Depends(get_db)):
+    require_admin(request)
+    email = payload.get("email", "").strip().lower()
+    full_name = payload.get("full_name", "").strip()
+    password = payload.get("password", "").strip()
+    phone = payload.get("phone", "").strip()
+
+    if not email or not full_name or not password:
+        raise HTTPException(status_code=400, detail="email, full_name and password are required")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if db.query(models.User).filter(models.User.email == email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user = models.User(
+        email=email,
+        full_name=full_name,
+        phone=phone or None,
+        hashed_password=hash_password(password),
+        is_active=True,
+        is_verified=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"success": True, "user_id": user.id, "email": user.email, "full_name": user.full_name}
+
+
+@router.delete("/admin/users/{user_id}")
+def delete_user_admin(user_id: int, request: Request, db: Session = Depends(get_db)):
+    require_admin(request)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Remove memberships first
+    db.query(models.RestaurantMember).filter(models.RestaurantMember.user_id == user_id).delete()
+    db.delete(user)
+    db.commit()
+    return {"success": True}
+
+
 # ─── Admin HTML Panel ─────────────────────────────────────────────────────────
 
 ADMIN_HTML = """<!DOCTYPE html>
