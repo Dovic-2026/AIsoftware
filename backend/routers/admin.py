@@ -395,10 +395,10 @@ ADMIN_HTML = """<!DOCTYPE html>
     <input type="text" id="editRestCity" readonly style="opacity:.5;cursor:not-allowed" />
     <label>Plan</label>
     <select id="editRestPlan" style="width:100%;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:11px 14px;color:#e2e8f0;font-size:14px;margin-bottom:14px">
-      <option value="starter">Starter — ₹199/mo</option>
-      <option value="growth">Growth — ₹599/mo</option>
-      <option value="pro">Pro — ₹999/mo</option>
-      <option value="enterprise">Enterprise — ₹1,999/mo</option>
+      <option value="starter">Starter (Rs.199/mo)</option>
+      <option value="growth">Growth (Rs.599/mo)</option>
+      <option value="pro">Pro (Rs.999/mo)</option>
+      <option value="enterprise">Enterprise (Rs.1999/mo)</option>
     </select>
     <label>Subscription Status</label>
     <select id="editRestStatus" style="width:100%;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:11px 14px;color:#e2e8f0;font-size:14px;margin-bottom:14px">
@@ -530,38 +530,67 @@ function filterRestaurants(q) {
   ));
 }
 
+function planOpts(cur) {
+  var opts = '';
+  ['starter','growth','pro','enterprise'].forEach(function(p) {
+    opts += '<option value="' + p + '"' + (cur===p?' selected':'') + '>' + p + '</option>';
+  });
+  return opts;
+}
+function statusOpts(cur) {
+  var opts = '';
+  ['trial','active','suspended','cancelled'].forEach(function(s) {
+    opts += '<option value="' + s + '"' + (cur===s?' selected':'') + '>' + s + '</option>';
+  });
+  return opts;
+}
+function payOpts(cur) {
+  var opts = '';
+  ['pending','paid','overdue','free'].forEach(function(s) {
+    opts += '<option value="' + s + '"' + (cur===s?' selected':'') + '>' + s + '</option>';
+  });
+  return opts;
+}
+
 function renderRestaurants(list) {
-  document.getElementById('restTable').innerHTML = list.map(r => `
-    <tr>
-      <td><strong style="color:#f1f5f9">${r.name}</strong><br><span style="color:#475569;font-size:11px">${r.phone || ''}</span></td>
-      <td>${r.owner_name || '—'}<br><span style="color:#475569;font-size:11px">${r.owner_email || '—'}</span></td>
-      <td>${r.city || '—'}</td>
-      <td><select class="inline" onchange="updateRestaurant(${r.id},'plan',this.value)">${['starter','growth','pro','enterprise'].map(p=>`<option ${r.plan===p?'selected':''} value="${p}">${p}</option>`).join('')}</select></td>
-      <td><select class="inline" onchange="updateRestaurant(${r.id},'subscription_status',this.value)">${['trial','active','suspended','cancelled'].map(s=>`<option ${r.subscription_status===s?'selected':''} value="${s}">${s}</option>`).join('')}</select></td>
-      <td><select class="inline" onchange="updateRestaurant(${r.id},'payment_status',this.value)">${['pending','paid','overdue','free'].map(s=>`<option ${r.payment_status===s?'selected':''} value="${s}">${s}</option>`).join('')}</select></td>
-      <td>${r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}</td>
-      <td style="display:flex;gap:4px;flex-wrap:wrap">
-        ${r.is_active
-          ? `<button class="action-btn danger" onclick="toggleRestaurant(${r.id},false)">Suspend</button>`
-          : `<button class="action-btn primary" onclick="toggleRestaurant(${r.id},true)">Activate</button>`}
-        <button class="action-btn" onclick="openEditRest(${r.id})" style="background:#1e3a5f;color:#60a5fa">Edit</button>
-        <button class="action-btn danger" data-del-id="${r.id}" onclick="deleteRestaurant(this)">Delete</button>
-      </td>
-    </tr>`).join('');
+  var html = '';
+  list.forEach(function(r) {
+    var joined = r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '-';
+    var owner = (r.owner_name || '-') + '<br><span style="color:#475569;font-size:11px">' + (r.owner_email || '-') + '</span>';
+    var toggleBtn = r.is_active
+      ? '<button class="action-btn danger" onclick="toggleRestaurant(' + r.id + ',false)">Suspend</button>'
+      : '<button class="action-btn primary" onclick="toggleRestaurant(' + r.id + ',true)">Activate</button>';
+    html += '<tr>';
+    html += '<td><strong style="color:#f1f5f9">' + r.name + '</strong><br><span style="color:#475569;font-size:11px">' + (r.phone || '') + '</span></td>';
+    html += '<td>' + owner + '</td>';
+    html += '<td>' + (r.city || '-') + '</td>';
+    html += '<td><select class="inline" onchange="updateRestaurant(' + r.id + ',\'plan\',this.value)">' + planOpts(r.plan) + '</select></td>';
+    html += '<td><select class="inline" onchange="updateRestaurant(' + r.id + ',\'subscription_status\',this.value)">' + statusOpts(r.subscription_status) + '</select></td>';
+    html += '<td><select class="inline" onchange="updateRestaurant(' + r.id + ',\'payment_status\',this.value)">' + payOpts(r.payment_status) + '</select></td>';
+    html += '<td>' + joined + '</td>';
+    html += '<td style="display:flex;gap:4px;flex-wrap:wrap">' + toggleBtn;
+    html += '<button class="action-btn" onclick="openEditRest(' + r.id + ')" style="background:#1e3a5f;color:#60a5fa">Edit</button>';
+    html += '<button class="action-btn danger" data-del-id="' + r.id + '" onclick="deleteRestaurant(this)">Delete</button>';
+    html += '</td></tr>';
+  });
+  document.getElementById('restTable').innerHTML = html;
 }
 
 function renderUsers(list) {
-  document.getElementById('usersTable').innerHTML = list.map(u => `
-    <tr>
-      <td><strong style="color:#f1f5f9">${u.full_name}</strong></td>
-      <td style="color:#94a3b8">${u.email}</td>
-      <td style="color:#94a3b8">${u.phone || '—'}</td>
-      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : '—'}</td>
-      <td>
-        <button class="action-btn" data-uid="${u.id}" onclick="openReset(this)">Reset Password</button>
-        <button class="action-btn danger" data-uid="${u.id}" onclick="deleteUser(this)">Delete</button>
-      </td>
-    </tr>`).join('');
+  var html = '';
+  list.forEach(function(u) {
+    var joined = u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : '-';
+    html += '<tr>';
+    html += '<td><strong style="color:#f1f5f9">' + u.full_name + '</strong></td>';
+    html += '<td style="color:#94a3b8">' + u.email + '</td>';
+    html += '<td style="color:#94a3b8">' + (u.phone || '-') + '</td>';
+    html += '<td>' + joined + '</td>';
+    html += '<td>';
+    html += '<button class="action-btn" data-uid="' + u.id + '" onclick="openReset(this)">Reset Password</button>';
+    html += '<button class="action-btn danger" data-uid="' + u.id + '" onclick="deleteUser(this)">Delete</button>';
+    html += '</td></tr>';
+  });
+  document.getElementById('usersTable').innerHTML = html;
 }
 
 async function updateRestaurant(id, field, value) {
