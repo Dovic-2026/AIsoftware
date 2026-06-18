@@ -165,6 +165,8 @@ async def handle_incoming_message(
         return _help_message()
 
     if re.match(r"^(today|report|daily report|today's report|full report)", lower):
+        if not _is_owner(phone, restaurant, db):
+            return "⛔ Daily reports are only available to the restaurant owner."
         return await _handle_report(restaurant, db)
 
     if re.match(r"^(stock|stock check|inventory|low stock)", lower):
@@ -189,6 +191,8 @@ async def handle_incoming_message(
         return await _handle_restock(text, restaurant, db)
 
     if re.match(r"^(summary|today summary)", lower):
+        if not _is_owner(phone, restaurant, db):
+            return "⛔ Daily reports are only available to the restaurant owner."
         return await _handle_report(restaurant, db)
 
     # ── AI Fallback ───────────────────────────────────────────────────────────
@@ -348,6 +352,24 @@ async def _handle_onboarding(phone: str, text: str, lower: str, session: models.
     return "👋 Send *'Hi'* to get started with DOVIC AI!"
 
 
+def _is_owner(phone: str, restaurant: models.Restaurant, db: Session) -> bool:
+    """Check if the WhatsApp number belongs to the restaurant owner."""
+    clean = phone.lstrip("+")
+    # Match by restaurant's own phone field
+    if restaurant.phone and clean[-10:] in restaurant.phone.replace("+", "").replace(" ", ""):
+        return True
+    # Match by owner user's phone via RestaurantMember
+    owner_member = db.query(models.RestaurantMember).filter(
+        models.RestaurantMember.restaurant_id == restaurant.id,
+        models.RestaurantMember.role == models.UserRole.owner,
+    ).first()
+    if owner_member:
+        owner = db.query(models.User).filter(models.User.id == owner_member.user_id).first()
+        if owner and owner.phone and clean[-10:] in owner.phone.replace("+", "").replace(" ", ""):
+            return True
+    return False
+
+
 def _welcome_message(restaurant: models.Restaurant) -> str:
     return f"""👋 Welcome back to *DOVIC AI*!
 
@@ -460,8 +482,6 @@ async def _handle_attendance(phone: str, restaurant: models.Restaurant, db: Sess
         restaurant_id=restaurant.id,
         date=today,
         status=models.AttendanceStatus.present,
-        check_in_time=datetime.now().strftime("%H:%M"),
-        marked_via="whatsapp",
     )
     db.add(attendance)
 
