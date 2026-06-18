@@ -136,7 +136,7 @@ def update_restaurant_admin(
     return {"success": True, "restaurant_id": r.id, "plan": r.plan, "subscription_status": r.subscription_status}
 
 
-@router.delete("/admin/restaurants/{restaurant_id}")
+@router.post("/admin/restaurants/{restaurant_id}/suspend")
 def suspend_restaurant(restaurant_id: int, request: Request, db: Session = Depends(get_db)):
     require_admin(request)
     r = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
@@ -144,6 +144,28 @@ def suspend_restaurant(restaurant_id: int, request: Request, db: Session = Depen
         raise HTTPException(status_code=404, detail="Restaurant not found")
     r.is_active = False
     r.subscription_status = models.SubscriptionStatus.suspended
+    db.commit()
+    return {"success": True}
+
+
+@router.delete("/admin/restaurants/{restaurant_id}")
+def delete_restaurant(restaurant_id: int, request: Request, db: Session = Depends(get_db)):
+    require_admin(request)
+    r = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    # Delete all related data
+    db.query(models.WhatsAppSession).filter(models.WhatsAppSession.restaurant_id == restaurant_id).delete()
+    db.query(models.RestaurantMember).filter(models.RestaurantMember.restaurant_id == restaurant_id).delete()
+    db.query(models.MenuItem).filter(models.MenuItem.restaurant_id == restaurant_id).delete()
+    db.query(models.MenuCategory).filter(models.MenuCategory.restaurant_id == restaurant_id).delete()
+    db.query(models.InventoryItem).filter(models.InventoryItem.restaurant_id == restaurant_id).delete()
+    db.query(models.SalesOrder).filter(models.SalesOrder.restaurant_id == restaurant_id).delete()
+    db.query(models.Expense).filter(models.Expense.restaurant_id == restaurant_id).delete()
+    db.query(models.Supplier).filter(models.Supplier.restaurant_id == restaurant_id).delete()
+    db.query(models.StaffMember).filter(models.StaffMember.restaurant_id == restaurant_id).delete()
+    db.query(models.DailyReport).filter(models.DailyReport.restaurant_id == restaurant_id).delete()
+    db.delete(r)
     db.commit()
     return {"success": True}
 
@@ -360,6 +382,45 @@ ADMIN_HTML = """<!DOCTYPE html>
   </div>
 </div>
 
+<!-- Edit Restaurant Modal -->
+<div id="editRestModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:32px;width:440px;max-width:90vw">
+    <div style="font-size:16px;font-weight:800;color:#f1f5f9;margin-bottom:20px">✏️ Edit Restaurant</div>
+    <input type="hidden" id="editRestId" />
+    <label>Restaurant Name</label>
+    <input type="text" id="editRestName" readonly style="opacity:.5;cursor:not-allowed" />
+    <label>Phone</label>
+    <input type="text" id="editRestPhone" readonly style="opacity:.5;cursor:not-allowed" />
+    <label>City</label>
+    <input type="text" id="editRestCity" readonly style="opacity:.5;cursor:not-allowed" />
+    <label>Plan</label>
+    <select id="editRestPlan" style="width:100%;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:11px 14px;color:#e2e8f0;font-size:14px;margin-bottom:14px">
+      <option value="starter">Starter — ₹199/mo</option>
+      <option value="growth">Growth — ₹599/mo</option>
+      <option value="pro">Pro — ₹999/mo</option>
+      <option value="enterprise">Enterprise — ₹1,999/mo</option>
+    </select>
+    <label>Subscription Status</label>
+    <select id="editRestStatus" style="width:100%;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:11px 14px;color:#e2e8f0;font-size:14px;margin-bottom:14px">
+      <option value="trial">Trial</option>
+      <option value="active">Active</option>
+      <option value="suspended">Suspended</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <label>Payment Status</label>
+    <select id="editRestPayment" style="width:100%;background:#0f172a;border:1.5px solid #334155;border-radius:10px;padding:11px 14px;color:#e2e8f0;font-size:14px;margin-bottom:14px">
+      <option value="pending">Pending</option>
+      <option value="paid">Paid</option>
+      <option value="overdue">Overdue</option>
+      <option value="free">Free</option>
+    </select>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button onclick="saveEditRest()" style="flex:1;padding:12px;background:#22c55e;color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer">Save Changes</button>
+      <button onclick="document.getElementById('editRestModal').style.display='none'" style="flex:1;padding:12px;background:#334155;color:#94a3b8;border:none;border-radius:8px;font-weight:700;cursor:pointer">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Reset Password Modal -->
 <div id="resetModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
   <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;padding:32px;width:380px;max-width:90vw">
@@ -479,10 +540,12 @@ function renderRestaurants(list) {
       <td><select class="inline" onchange="updateRestaurant(${r.id},'subscription_status',this.value)">${['trial','active','suspended','cancelled'].map(s=>`<option ${r.subscription_status===s?'selected':''} value="${s}">${s}</option>`).join('')}</select></td>
       <td><select class="inline" onchange="updateRestaurant(${r.id},'payment_status',this.value)">${['pending','paid','overdue','free'].map(s=>`<option ${r.payment_status===s?'selected':''} value="${s}">${s}</option>`).join('')}</select></td>
       <td>${r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}</td>
-      <td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">
         ${r.is_active
           ? `<button class="action-btn danger" onclick="toggleRestaurant(${r.id},false)">Suspend</button>`
           : `<button class="action-btn primary" onclick="toggleRestaurant(${r.id},true)">Activate</button>`}
+        <button class="action-btn" onclick="openEditRest(${r.id})" style="background:#1e3a5f;color:#60a5fa">Edit</button>
+        <button class="action-btn danger" onclick="deleteRestaurant(${r.id},'${r.name.replace(/'/g,"\\'")}')">Delete</button>
       </td>
     </tr>`).join('');
 }
@@ -516,6 +579,45 @@ async function toggleRestaurant(id, active) {
     showToast(active ? 'Activated!' : 'Suspended!');
     await loadRestaurants();
   } catch(e) { showToast('Error', '#ef4444'); }
+}
+
+async function deleteRestaurant(id, name) {
+  if (!confirm('⚠️ PERMANENTLY DELETE "' + name + '"?\n\nThis will delete ALL data: menu, inventory, sales, staff, expenses.\n\nThis CANNOT be undone!')) return;
+  if (!confirm('Are you absolutely sure? Type OK to confirm.\n\nDeleting: ' + name)) return;
+  try {
+    await api('DELETE', `/admin/restaurants/${id}`);
+    showToast('Restaurant deleted!');
+    await loadRestaurants();
+    await loadStats();
+  } catch(e) { showToast('Error: ' + e.message, '#ef4444'); }
+}
+
+function openEditRest(id) {
+  const r = ALL_RESTAURANTS.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('editRestId').value = id;
+  document.getElementById('editRestName').value = r.name || '';
+  document.getElementById('editRestPhone').value = r.phone || '';
+  document.getElementById('editRestCity').value = r.city || '';
+  document.getElementById('editRestPlan').value = r.plan || 'starter';
+  document.getElementById('editRestStatus').value = r.subscription_status || 'trial';
+  document.getElementById('editRestPayment').value = r.payment_status || 'pending';
+  document.getElementById('editRestModal').style.display = 'flex';
+}
+
+async function saveEditRest() {
+  const id = document.getElementById('editRestId').value;
+  const payload = {
+    plan: document.getElementById('editRestPlan').value,
+    subscription_status: document.getElementById('editRestStatus').value,
+    payment_status: document.getElementById('editRestPayment').value,
+  };
+  try {
+    await api('PATCH', `/admin/restaurants/${id}`, payload);
+    showToast('Restaurant updated!');
+    document.getElementById('editRestModal').style.display = 'none';
+    await loadRestaurants();
+  } catch(e) { showToast('Error: ' + e.message, '#ef4444'); }
 }
 
 function openCreateUser() {
