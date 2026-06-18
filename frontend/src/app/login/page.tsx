@@ -1,5 +1,5 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { authApi } from "@/lib/api";
@@ -7,12 +7,24 @@ import { useAuthStore } from "@/store/auth";
 import toast from "react-hot-toast";
 import { Spinner } from "@/components/ui/icons";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const [mode, setMode] = useState<"login" | "register">(params.get("mode") === "register" ? "register" : "login");
   const [loading, setLoading] = useState(false);
-  const { setAuth } = useAuthStore();
+  const { setAuth, token, restaurant } = useAuthStore();
+
+  // Instant redirect if already logged in
+  useEffect(() => {
+    if (token) {
+      router.replace(restaurant ? "/app" : "/setup");
+      return;
+    }
+    // Pre-warm the backend so it's ready when user hits Sign In
+    fetch(`${API_BASE}/health`, { method: "GET", mode: "no-cors" }).catch(() => {});
+  }, [token, restaurant, router]);
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const onSubmit = async (data: any) => {
