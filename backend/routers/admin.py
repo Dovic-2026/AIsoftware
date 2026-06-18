@@ -154,17 +154,23 @@ def delete_restaurant(restaurant_id: int, request: Request, db: Session = Depend
     r = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Restaurant not found")
-    # Delete all related data
+    # Delete all related data (child tables first to avoid FK violations)
     db.query(models.WhatsAppSession).filter(models.WhatsAppSession.restaurant_id == restaurant_id).delete()
-    db.query(models.RestaurantMember).filter(models.RestaurantMember.restaurant_id == restaurant_id).delete()
-    db.query(models.MenuItem).filter(models.MenuItem.restaurant_id == restaurant_id).delete()
-    db.query(models.MenuCategory).filter(models.MenuCategory.restaurant_id == restaurant_id).delete()
-    db.query(models.InventoryItem).filter(models.InventoryItem.restaurant_id == restaurant_id).delete()
+    db.query(models.AIReport).filter(models.AIReport.restaurant_id == restaurant_id).delete()
+    db.query(models.Attendance).filter(models.Attendance.restaurant_id == restaurant_id).delete()
+    db.query(models.StaffMember).filter(models.StaffMember.restaurant_id == restaurant_id).delete()
+    # SalesOrderItems reference SalesOrders — delete items first
+    order_ids = [o.id for o in db.query(models.SalesOrder.id).filter(models.SalesOrder.restaurant_id == restaurant_id).all()]
+    if order_ids:
+        db.query(models.SalesOrderItem).filter(models.SalesOrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
     db.query(models.SalesOrder).filter(models.SalesOrder.restaurant_id == restaurant_id).delete()
     db.query(models.Expense).filter(models.Expense.restaurant_id == restaurant_id).delete()
     db.query(models.Supplier).filter(models.Supplier.restaurant_id == restaurant_id).delete()
-    db.query(models.StaffMember).filter(models.StaffMember.restaurant_id == restaurant_id).delete()
-    db.query(models.DailyReport).filter(models.DailyReport.restaurant_id == restaurant_id).delete()
+    db.query(models.InventoryTransaction).filter(models.InventoryTransaction.restaurant_id == restaurant_id).delete()
+    db.query(models.Ingredient).filter(models.Ingredient.restaurant_id == restaurant_id).delete()
+    db.query(models.MenuItem).filter(models.MenuItem.restaurant_id == restaurant_id).delete()
+    db.query(models.MenuCategory).filter(models.MenuCategory.restaurant_id == restaurant_id).delete()
+    db.query(models.RestaurantMember).filter(models.RestaurantMember.restaurant_id == restaurant_id).delete()
     db.delete(r)
     db.commit()
     return {"success": True}
