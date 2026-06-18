@@ -4,7 +4,7 @@ import { WhatsAppIcon } from "@/components/ui/icons";
 
 const TABS = [
   { href: "/app", label: "Home", emoji: "🏠" },
-  { href: "/app/whatsapp", label: "WhatsApp", emoji: "💬", wa: true },
+  { href: "/app/pos", label: "Order", emoji: "🛒" },
   { href: "/app/menu", label: "Menu", emoji: "🍽️" },
   { href: "/app/sales", label: "Sales", emoji: "💰" },
   { href: "/app/stock", label: "Stock", emoji: "📦" },

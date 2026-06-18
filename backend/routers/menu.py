@@ -161,6 +161,7 @@ def delete_item(restaurant_id: int, item_id: int,
 @router.post("/items/{item_id}/image")
 async def upload_item_image(restaurant_id: int, item_id: int, file: UploadFile = File(...),
                             db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    from config import settings
     item = db.query(models.MenuItem).filter(
         models.MenuItem.id == item_id,
         models.MenuItem.restaurant_id == restaurant_id,
@@ -168,13 +169,34 @@ async def upload_item_image(restaurant_id: int, item_id: int, file: UploadFile =
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    ext = file.filename.split(".")[-1]
-    filename = f"{uuid.uuid4()}.{ext}"
-    path = f"{UPLOAD_DIR}/{filename}"
-    async with aiofiles.open(path, "wb") as f:
-        content = await file.read()
-        await f.write(content)
+    content = await file.read()
+    ext = (file.filename or "jpg").split(".")[-1].lower()
+    filename = f"restaurant_{restaurant_id}/{uuid.uuid4()}.{ext}"
 
-    item.image_url = f"/uploads/menu/{filename}"
+    # Use Supabase Storage if configured, else local filesystem
+    if settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY:
+        import httpx
+        upload_url = f"{settings.SUPABASE_URL}/storage/v1/object/{settings.SUPABASE_STORAGE_BUCKET}/{filename}"
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                upload_url,
+                content=content,
+                headers={
+                    "Authorization": f"Bearer {settings.SUPABASE_SERVICE_KEY}",
+                    "Content-Type": file.content_type or "image/jpeg",
+                    "x-upsert": "true",
+                },
+            )
+        if resp.status_code not in (200, 201):
+            raise HTTPException(status_code=500, detail=f"Storage upload failed: {resp.text}")
+        image_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/{settings.SUPABASE_STORAGE_BUCKET}/{filename}"
+    else:
+        # Fallback: local filesystem
+        local_path = f"{UPLOAD_DIR}/{uuid.uuid4()}.{ext}"
+        async with aiofiles.open(local_path, "wb") as f:
+            await f.write(content)
+        image_url = f"/uploads/menu/{local_path.split('/')[-1]}"
+
+    item.image_url = image_url
     db.commit()
-    return {"image_url": item.image_url}
+    return {"image_url": image_url}

@@ -147,7 +147,11 @@ Today: **₹{m['total_revenue']:,.0f}** ({rev_arrow}{abs(m['revenue_change_pct']
 *DOVIC AI · {datetime.now().strftime('%I:%M %p')} · {m['report_date']}*"""
 
 
-def generate_whatsapp_summary(metrics: dict) -> str:
+async def generate_whatsapp_summary(metrics: dict, restaurant_name: str = "") -> str:
+    return _generate_whatsapp_summary_sync(metrics, restaurant_name)
+
+
+def _generate_whatsapp_summary_sync(metrics: dict, restaurant_name: str = "") -> str:
     m = metrics
     rev_arrow = "↑" if m["revenue_change_pct"] >= 0 else "↓"
     top = m["top_items"][0]["name"] if m["top_items"] else "N/A"

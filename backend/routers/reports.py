@@ -89,6 +89,43 @@ def get_report(
     return report
 
 
+@router.post("/send-whatsapp")
+async def send_report_whatsapp(
+    restaurant_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Immediately send today's sales report to the owner's WhatsApp."""
+    from config import settings
+    restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+
+    # Find owner phone
+    owner_member = db.query(models.RestaurantMember).filter(
+        models.RestaurantMember.restaurant_id == restaurant_id,
+        models.RestaurantMember.role == models.UserRole.owner,
+    ).first()
+    owner = db.query(models.User).filter(models.User.id == owner_member.user_id).first() if owner_member else None
+    owner_phone = (owner.phone if owner and owner.phone else None) or restaurant.phone or restaurant.whatsapp_number
+
+    # Use test number during testing
+    TEST_NUMBER = "9345802847"
+    send_to = TEST_NUMBER  # Replace with owner_phone once WhatsApp is live
+
+    if not send_to:
+        raise HTTPException(status_code=400, detail="No WhatsApp number configured for this restaurant")
+
+    metrics = gather_daily_metrics(restaurant_id, date.today(), db)
+    wa_summary = await generate_whatsapp_summary(metrics, restaurant.name)
+    header = f"📊 *Sales Report — {restaurant.name}*\n_{date.today().strftime('%d %B %Y')}_\n\n"
+    sent = await send_whatsapp_message(send_to, header + wa_summary)
+
+    if not sent:
+        raise HTTPException(status_code=500, detail="Failed to send WhatsApp message")
+    return {"success": True, "sent_to": send_to}
+
+
 @router.post("/query")
 async def query_ai(
     restaurant_id: int,

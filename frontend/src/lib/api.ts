@@ -120,6 +120,7 @@ export const reportsApi = {
   list: (rid: number) => api.get(`/restaurants/${rid}/reports/`),
   getByDate: (rid: number, d: string) => api.get(`/restaurants/${rid}/reports/${d}`),
   query: (rid: number, data: any) => api.post(`/restaurants/${rid}/reports/query`, data),
+  sendWhatsapp: (rid: number) => api.post(`/restaurants/${rid}/reports/send-whatsapp`),
 };
 
 // ─── WhatsApp ────────────────────────────────────────────────────────────────

@@ -41,16 +41,27 @@ export default function ReportsPage() {
     onError: () => toast.error("Query failed"),
   });
 
+  const { mutate: sendWA, isPending: sending } = useMutation({
+    mutationFn: () => reportsApi.sendWhatsapp(restaurant!.id),
+    onSuccess: () => toast.success("📱 Report sent to your WhatsApp!"),
+    onError: () => toast.error("Failed to send — check WhatsApp config"),
+  });
+
   return (
     <div className="flex flex-col h-full">
       <div className="bg-white px-5 pt-4 pb-4 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <div className="text-[20px] font-extrabold text-gray-900">AI Reports</div>
-          <button onClick={() => generate()} disabled={generating} className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white px-4 py-2 rounded-xl text-[13px] font-bold shadow-sm flex items-center gap-2">
-            {generating ? <><Spinner /> Generating...</> : "🤖 Generate"}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => sendWA()} disabled={sending} className="bg-[#25D366] text-white px-3 py-2 rounded-xl text-[12px] font-bold shadow-sm flex items-center gap-1.5">
+              {sending ? <Spinner /> : "📱"}{sending ? "Sending..." : "Send WA"}
+            </button>
+            <button onClick={() => generate()} disabled={generating} className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white px-3 py-2 rounded-xl text-[13px] font-bold shadow-sm flex items-center gap-1.5">
+              {generating ? <><Spinner /> </> : "🤖"}{generating ? "Generating..." : "Generate"}
+            </button>
+          </div>
         </div>
-        <p className="text-[12px] text-gray-400">Daily AI analysis of your restaurant performance</p>
+        <p className="text-[12px] text-gray-400">Auto-sends every night 11 PM • Tap "Send WA" for instant report</p>
       </div>
 
       <div className="flex-1 overflow-y-auto hide-scroll">

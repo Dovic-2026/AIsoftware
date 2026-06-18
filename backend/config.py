@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     DAILY_REPORT_MINUTE: int = 0
     REPORT_TIMEZONE: str = "Asia/Kolkata"
 
+    # Supabase Storage (for menu images)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_SERVICE_KEY: Optional[str] = None
+    SUPABASE_STORAGE_BUCKET: str = "menu-images"
+
     FRONTEND_URL: str = "http://localhost:3000"
     ENVIRONMENT: str = "development"
 

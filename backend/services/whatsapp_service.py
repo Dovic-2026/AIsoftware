@@ -415,7 +415,7 @@ async def _handle_report(restaurant: models.Restaurant, db: Session) -> str:
     from services.ai_service import gather_daily_metrics, generate_whatsapp_summary
     try:
         metrics = gather_daily_metrics(restaurant.id, date.today(), db)
-        return generate_whatsapp_summary(metrics)
+        return await generate_whatsapp_summary(metrics, restaurant.name)
     except Exception as e:
         return f"Unable to generate report right now. Error: {str(e)}"
 
