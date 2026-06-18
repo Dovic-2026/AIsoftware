@@ -448,7 +448,7 @@ function showToast(msg, color) {
   t.style.background = color || '#22c55e';
   t.style.color = color ? '#fff' : '#000';
   t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 2500);
+  setTimeout(function() { t.style.display = 'none'; }, 2500);
 }
 
 async function api(method, path, body) {
@@ -483,7 +483,7 @@ function logout() {
 async function showDashboard() {
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
-  setInterval(() => { document.getElementById('headerTime').textContent = new Date().toLocaleString('en-IN'); }, 1000);
+  setInterval(function() { document.getElementById('headerTime').textContent = new Date().toLocaleString('en-IN'); }, 1000);
   await loadStats();
   await loadRestaurants();
 }
@@ -564,9 +564,9 @@ function renderRestaurants(list) {
     html += '<td><strong style="color:#f1f5f9">' + r.name + '</strong><br><span style="color:#475569;font-size:11px">' + (r.phone || '') + '</span></td>';
     html += '<td>' + owner + '</td>';
     html += '<td>' + (r.city || '-') + '</td>';
-    html += '<td><select class="inline" onchange="updateRestaurant(' + r.id + ',\'plan\',this.value)">' + planOpts(r.plan) + '</select></td>';
-    html += '<td><select class="inline" onchange="updateRestaurant(' + r.id + ',\'subscription_status\',this.value)">' + statusOpts(r.subscription_status) + '</select></td>';
-    html += '<td><select class="inline" onchange="updateRestaurant(' + r.id + ',\'payment_status\',this.value)">' + payOpts(r.payment_status) + '</select></td>';
+    html += '<td><select class="inline" data-rid="' + r.id + '" data-field="plan" onchange="updateRestField(this)">' + planOpts(r.plan) + '</select></td>';
+    html += '<td><select class="inline" data-rid="' + r.id + '" data-field="subscription_status" onchange="updateRestField(this)">' + statusOpts(r.subscription_status) + '</select></td>';
+    html += '<td><select class="inline" data-rid="' + r.id + '" data-field="payment_status" onchange="updateRestField(this)">' + payOpts(r.payment_status) + '</select></td>';
     html += '<td>' + joined + '</td>';
     html += '<td style="display:flex;gap:4px;flex-wrap:wrap">' + toggleBtn;
     html += '<button class="action-btn" onclick="openEditRest(' + r.id + ')" style="background:#1e3a5f;color:#60a5fa">Edit</button>';
@@ -593,18 +593,35 @@ function renderUsers(list) {
   document.getElementById('usersTable').innerHTML = html;
 }
 
-async function updateRestaurant(id, field, value) {
+async function updateRestField(sel) {
+  var id = sel.dataset.rid;
+  var field = sel.dataset.field;
+  var value = sel.value;
+  var body = {};
+  body[field] = value;
   try {
-    await api('PATCH', `/admin/restaurants/${id}`, { [field]: value });
+    await api('PATCH', '/admin/restaurants/' + id, body);
     showToast('Updated!');
-    const r = ALL_RESTAURANTS.find(x => x.id === id);
+    var r = ALL_RESTAURANTS.find(function(x) { return x.id == id; });
+    if (r) r[field] = value;
+  } catch(e) { showToast('Error: ' + e.message, '#ef4444'); }
+}
+
+async function updateRestaurant(id, field, value) {
+  var body = {};
+  body[field] = value;
+  try {
+    await api('PATCH', '/admin/restaurants/' + id, body);
+    showToast('Updated!');
+    var r = ALL_RESTAURANTS.find(function(x) { return x.id == id; });
     if (r) r[field] = value;
   } catch(e) { showToast('Error: ' + e.message, '#ef4444'); }
 }
 
 async function toggleRestaurant(id, active) {
   try {
-    await api('PATCH', `/admin/restaurants/${id}`, { is_active: active, subscription_status: active ? 'active' : 'suspended' });
+    var body2 = { is_active: active, subscription_status: active ? 'active' : 'suspended' };
+    await api('PATCH', '/admin/restaurants/' + id, body2);
     showToast(active ? 'Activated!' : 'Suspended!');
     await loadRestaurants();
   } catch(e) { showToast('Error', '#ef4444'); }
@@ -624,7 +641,7 @@ async function deleteRestaurant(btn) {
 }
 
 function openEditRest(id) {
-  const r = ALL_RESTAURANTS.find(x => x.id === id);
+  var r = ALL_RESTAURANTS.find(function(x) { return x.id == id; });
   if (!r) return;
   document.getElementById('editRestId').value = id;
   document.getElementById('editRestName').value = r.name || '';
@@ -644,7 +661,7 @@ async function saveEditRest() {
     payment_status: document.getElementById('editRestPayment').value,
   };
   try {
-    await api('PATCH', `/admin/restaurants/${id}`, payload);
+    await api('PATCH', '/admin/restaurants/' + id, payload);
     showToast('Restaurant updated!');
     document.getElementById('editRestModal').style.display = 'none';
     await loadRestaurants();
@@ -654,7 +671,7 @@ async function saveEditRest() {
 function openCreateUser() {
   document.getElementById('createUserModal').style.display = 'flex';
   document.getElementById('createErr').textContent = '';
-  ['newName','newEmail','newPassword','newPhone'].forEach(id => document.getElementById(id).value = '');
+  ['newName','newEmail','newPassword','newPhone'].forEach(function(id) { document.getElementById(id).value = ''; });
 }
 function closeCreateUser() { document.getElementById('createUserModal').style.display = 'none'; }
 
@@ -683,7 +700,7 @@ async function doReset() {
   const pw = document.getElementById('resetPassword').value.trim();
   if (!pw || pw.length < 6) { showToast('Min 6 characters', '#ef4444'); return; }
   try {
-    await api('PATCH', `/admin/users/${id}/reset-password`, { password: pw });
+    await api('PATCH', '/admin/users/' + id + '/reset-password', { password: pw });
     showToast('Password reset!');
     document.getElementById('resetModal').style.display = 'none';
   } catch(e) { showToast('Error', '#ef4444'); }
