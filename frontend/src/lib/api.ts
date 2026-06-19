@@ -108,10 +108,13 @@ export const suppliersApi = {
 export const staffApi = {
   list: (rid: number) => api.get(`/restaurants/${rid}/staff/`),
   create: (rid: number, data: any) => api.post(`/restaurants/${rid}/staff/`, data),
+  update: (rid: number, id: number, data: any) => api.put(`/restaurants/${rid}/staff/${id}`, data),
+  remove: (rid: number, id: number) => api.delete(`/restaurants/${rid}/staff/${id}`),
   attendance: (rid: number, params?: any) => api.get(`/restaurants/${rid}/staff/attendance`, { params }),
   markAttendance: (rid: number, data: any) => api.post(`/restaurants/${rid}/staff/attendance`, data),
   bulkAttendance: (rid: number, data: any) => api.post(`/restaurants/${rid}/staff/attendance/bulk`, data),
   todaySummary: (rid: number) => api.get(`/restaurants/${rid}/staff/attendance/today-summary`),
+  monthlyReport: (rid: number, month: number, year: number) => api.get(`/restaurants/${rid}/staff/attendance/monthly-report`, { params: { month, year } }),
 };
 
 // ─── Reports ─────────────────────────────────────────────────────────────────

@@ -452,21 +452,19 @@ def _handle_stock_check(restaurant: models.Restaurant, db: Session) -> str:
 
 
 async def _handle_attendance(phone: str, restaurant: models.Restaurant, db: Session) -> str:
-    # Find staff by WhatsApp number
+    clean_phone = phone.lstrip("+")
+    # Match staff by phone (last 10 digits)
     staff = db.query(models.StaffMember).filter(
         models.StaffMember.restaurant_id == restaurant.id,
-        models.StaffMember.whatsapp_number == phone,
         models.StaffMember.is_active == True,
+        models.StaffMember.phone.ilike(f"%{clean_phone[-10:]}%"),
     ).first()
 
     if not staff:
-        staff = db.query(models.StaffMember).filter(
-            models.StaffMember.restaurant_id == restaurant.id,
-            models.StaffMember.is_active == True,
-        ).first()
-
-    if not staff:
-        return "❌ No staff member linked to this number. Ask your manager to add you."
+        return (
+            "❌ Your number is not registered as an employee.\n\n"
+            "Ask your owner to add you in the DOVIC AI app → Staff section."
+        )
 
     today = date.today()
     existing = db.query(models.Attendance).filter(
@@ -475,13 +473,17 @@ async def _handle_attendance(phone: str, restaurant: models.Restaurant, db: Sess
     ).first()
 
     if existing:
-        return f"✅ *{staff.full_name}* — Already marked Present today!\n\n_{today.strftime('%d %B %Y')}, {datetime.now().strftime('%I:%M %p')}_"
+        return (
+            f"✅ *{staff.name}* — Already marked Present today!\n"
+            f"_{today.strftime('%d %B %Y')}, {datetime.now().strftime('%I:%M %p')}_"
+        )
 
     attendance = models.Attendance(
         staff_member_id=staff.id,
         restaurant_id=restaurant.id,
         date=today,
         status=models.AttendanceStatus.present,
+        notes=f"Marked via WhatsApp at {datetime.now().strftime('%H:%M')}",
     )
     db.add(attendance)
 
@@ -489,14 +491,39 @@ async def _handle_attendance(phone: str, restaurant: models.Restaurant, db: Sess
         models.StaffMember.restaurant_id == restaurant.id,
         models.StaffMember.is_active == True,
     ).count()
-    present_today = db.query(models.Attendance).filter(
+    present_count = db.query(models.Attendance).filter(
         models.Attendance.restaurant_id == restaurant.id,
         models.Attendance.date == today,
         models.Attendance.status == models.AttendanceStatus.present,
     ).count() + 1
 
     db.commit()
-    return f"✅ Attendance marked!\n\n👤 *{staff.full_name}* — {datetime.now().strftime('%I:%M %p')}\n\n*Team today:* {present_today}/{total_staff} present"
+
+    # Notify owner
+    owner_phone = restaurant.phone
+    owner_member = db.query(models.RestaurantMember).filter(
+        models.RestaurantMember.restaurant_id == restaurant.id,
+        models.RestaurantMember.role == models.UserRole.owner,
+    ).first()
+    if owner_member:
+        owner_user = db.query(models.User).filter(models.User.id == owner_member.user_id).first()
+        if owner_user and owner_user.phone:
+            owner_phone = owner_user.phone
+    if owner_phone and clean_phone[-10:] not in (owner_phone or "").replace("+", "")[-10:]:
+        notify = (
+            f"👤 *{staff.name}* marked Present\n"
+            f"🕐 {datetime.now().strftime('%I:%M %p')} · {today.strftime('%d %b %Y')}\n"
+            f"📊 Team: {present_count}/{total_staff} present today"
+        )
+        import asyncio
+        asyncio.create_task(send_whatsapp_message(owner_phone, notify))
+
+    return (
+        f"✅ Attendance marked!\n\n"
+        f"👤 *{staff.name}*\n"
+        f"🕐 {datetime.now().strftime('%I:%M %p')} · {today.strftime('%d %b %Y')}\n"
+        f"📊 Team today: {present_count}/{total_staff} present"
+    )
 
 
 def _handle_top_items(restaurant: models.Restaurant, db: Session) -> str:
