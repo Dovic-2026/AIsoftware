@@ -14,7 +14,7 @@ export default function BottomNav() {
   const router = useRouter();
 
   return (
-    <div className="h-[72px] bg-white border-t border-gray-100 flex items-center px-2 pb-2 flex-shrink-0">
+    <div className="h-[64px] bg-white border-t border-gray-100 flex items-center px-1 safe-area-bottom flex-shrink-0">
       {TABS.map((tab) => {
         const active = tab.href === "/app" ? pathname === "/app" : pathname.startsWith(tab.href);
         return (

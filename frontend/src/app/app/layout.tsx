@@ -16,11 +16,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!token || !restaurant) return null;
 
   return (
-    <div className="phone-shell bg-gray-50 flex flex-col">
-      <div className="flex-1 overflow-hidden flex flex-col">
+    <div className="phone-shell bg-gray-50 flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         {children}
       </div>
-      <BottomNav />
+      <div className="flex-shrink-0">
+        <BottomNav />
+      </div>
     </div>
   );
 }
