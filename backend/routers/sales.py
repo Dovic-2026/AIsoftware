@@ -28,21 +28,18 @@ def create_order(
     current_user=Depends(get_current_user),
 ):
     subtotal = sum(item.quantity * item.unit_price for item in payload.items)
-    tax = round(subtotal * 0.05, 2)
-    total = subtotal + tax - payload.discount
+    total = subtotal - payload.discount
 
     order = models.SalesOrder(
         restaurant_id=restaurant_id,
         order_number=generate_order_number(db, restaurant_id),
         table_number=payload.table_number,
         order_type=payload.order_type,
-        customer_name=payload.customer_name,
-        customer_phone=payload.customer_phone,
         payment_method=payload.payment_method,
         discount=payload.discount,
         notes=payload.notes,
         subtotal=subtotal,
-        tax=tax,
+        tax=0,
         total_amount=total,
         status=models.OrderStatus.completed,
         recorded_by=current_user.id,

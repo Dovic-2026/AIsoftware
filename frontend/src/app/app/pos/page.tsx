@@ -58,6 +58,7 @@ export default function POSPage() {
       table_number: tableNo || null,
       order_type: "dine_in",
       discount: 0,
+      notes: null,
       items: cart.map((c) => ({
         menu_item_id: c.id,
         item_name: c.name,
@@ -95,8 +96,7 @@ export default function POSPage() {
 
   const totalItems = cart.reduce((s, c) => s + c.qty, 0);
   const subtotal = cart.reduce((s, c) => s + c.qty * c.price, 0);
-  const tax = Math.round(subtotal * 0.05 * 100) / 100;
-  const grandTotal = subtotal + tax;
+  const grandTotal = subtotal;
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -254,9 +254,7 @@ export default function POSPage() {
             </div>
 
             {/* Summary */}
-            <div className="px-4 py-3 border-t border-gray-100 space-y-1.5">
-              <BillLine label="Subtotal" value={`₹${subtotal.toFixed(2)}`} />
-              <BillLine label="GST (5%)" value={`₹${tax.toFixed(2)}`} />
+            <div className="px-4 py-3 border-t border-gray-100">
               <BillLine label="Total" value={`₹${grandTotal.toFixed(2)}`} bold />
             </div>
 
@@ -313,12 +311,8 @@ export default function POSPage() {
                   </div>
 
                   {/* Totals */}
-                  <div className="space-y-1.5 mb-5 pb-4 border-b border-dashed border-gray-200">
-                    <BillLine label="Subtotal" value={`₹${subtotal.toFixed(2)}`} />
-                    <BillLine label="GST (5%)" value={`₹${tax.toFixed(2)}`} />
-                    <div className="pt-1.5">
-                      <BillLine label={`TOTAL`} value={`₹${grandTotal.toFixed(2)}`} bold />
-                    </div>
+                  <div className="mb-5 pb-4 border-b border-dashed border-gray-200">
+                    <BillLine label="TOTAL" value={`₹${grandTotal.toFixed(2)}`} bold />
                   </div>
 
                   {/* Payment mode */}
