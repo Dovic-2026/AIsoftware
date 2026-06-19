@@ -33,9 +33,11 @@ interface AuthState {
   token: string | null;
   user: User | null;
   restaurant: Restaurant | null;
+  _hasHydrated: boolean;
   setAuth: (token: string, user: User, restaurant?: Restaurant) => void;
   setRestaurant: (restaurant: Restaurant) => void;
   logout: () => void;
+  setHasHydrated: (v: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -44,10 +46,17 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       restaurant: null,
+      _hasHydrated: false,
       setAuth: (token, user, restaurant) => set({ token, user, restaurant: restaurant ?? null }),
       setRestaurant: (restaurant) => set({ restaurant }),
       logout: () => set({ token: null, user: null, restaurant: null }),
+      setHasHydrated: (v) => set({ _hasHydrated: v }),
     }),
-    { name: "dovic_auth" }
+    {
+      name: "dovic_auth",
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
   )
 );

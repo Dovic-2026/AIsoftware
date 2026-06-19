@@ -14,17 +14,18 @@ function LoginForm() {
   const params = useSearchParams();
   const [mode, setMode] = useState<"login" | "register">(params.get("mode") === "register" ? "register" : "login");
   const [loading, setLoading] = useState(false);
-  const { setAuth, token, restaurant } = useAuthStore();
+  const { setAuth, token, restaurant, _hasHydrated } = useAuthStore();
 
-  // Instant redirect if already logged in
+  // Redirect if already logged in (wait for hydration first)
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (token) {
       router.replace(restaurant ? "/app" : "/setup");
       return;
     }
     // Pre-warm the backend so it's ready when user hits Sign In
     fetch(`${API_BASE}/health`, { method: "GET", mode: "no-cors" }).catch(() => {});
-  }, [token, restaurant, router]);
+  }, [token, restaurant, _hasHydrated, router]);
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const onSubmit = async (data: any) => {
