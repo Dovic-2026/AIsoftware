@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import BottomNav from "@/components/layout/BottomNav";
+import InstallBanner from "@/components/InstallBanner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { token, restaurant } = useAuthStore();
@@ -21,6 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       <div className="flex-shrink-0">
+        <InstallBanner />
         <BottomNav />
       </div>
     </div>
