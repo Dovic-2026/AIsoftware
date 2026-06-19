@@ -178,6 +178,148 @@ def top_items(
     return [{"name": i.item_name, "quantity": int(i.total_qty), "revenue": round(float(i.total_revenue), 2)} for i in items]
 
 
+@router.delete("/orders/{order_id}")
+def delete_order(
+    restaurant_id: int, order_id: int,
+    reason: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    order = db.query(models.SalesOrder).filter(
+        models.SalesOrder.id == order_id,
+        models.SalesOrder.restaurant_id == restaurant_id,
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Snapshot order before deletion
+    log = models.OrderDeletionLog(
+        restaurant_id=restaurant_id,
+        order_id=order.id,
+        order_number=order.order_number,
+        order_total=order.total_amount,
+        order_items=[{"name": i.item_name, "qty": i.quantity, "price": i.unit_price} for i in order.items],
+        payment_method=str(order.payment_method.value) if hasattr(order.payment_method, "value") else str(order.payment_method),
+        table_number=order.table_number,
+        reason=reason or "No reason given",
+        deleted_by_id=current_user.id,
+        deleted_by_name=current_user.full_name,
+        original_created_at=order.created_at,
+    )
+    db.add(log)
+    db.query(models.SalesOrderItem).filter(models.SalesOrderItem.order_id == order_id).delete()
+    db.delete(order)
+    db.commit()
+    return {"success": True, "log_id": log.id}
+
+
+@router.get("/deletion-log")
+def get_deletion_log(
+    restaurant_id: int,
+    log_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    q = db.query(models.OrderDeletionLog).filter(
+        models.OrderDeletionLog.restaurant_id == restaurant_id
+    )
+    target = log_date or date.today()
+    q = q.filter(func.date(models.OrderDeletionLog.deleted_at) == target)
+    logs = q.order_by(models.OrderDeletionLog.deleted_at.desc()).all()
+    return [
+        {
+            "id": l.id,
+            "order_number": l.order_number,
+            "order_total": l.order_total,
+            "order_items": l.order_items,
+            "payment_method": l.payment_method,
+            "table_number": l.table_number,
+            "reason": l.reason,
+            "deleted_by": l.deleted_by_name,
+            "deleted_at": l.deleted_at.isoformat() if l.deleted_at else None,
+            "original_created_at": l.original_created_at.isoformat() if l.original_created_at else None,
+        }
+        for l in logs
+    ]
+
+
+@router.get("/deletion-log/pdf")
+def download_deletion_log_pdf(
+    restaurant_id: int,
+    log_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from fastapi.responses import StreamingResponse
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    import io
+
+    target = log_date or date.today()
+    q = db.query(models.OrderDeletionLog).filter(
+        models.OrderDeletionLog.restaurant_id == restaurant_id,
+        func.date(models.OrderDeletionLog.deleted_at) == target,
+    ).order_by(models.OrderDeletionLog.deleted_at.desc()).all()
+
+    restaurant = db.query(models.Restaurant).filter(models.Restaurant.id == restaurant_id).first()
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=1.5*cm, bottomMargin=1.5*cm, leftMargin=1.5*cm, rightMargin=1.5*cm)
+    styles = getSampleStyleSheet()
+    story = []
+
+    title_style = ParagraphStyle("title", parent=styles["Heading1"], fontSize=16, textColor=colors.HexColor("#128C7E"), spaceAfter=4)
+    sub_style = ParagraphStyle("sub", parent=styles["Normal"], fontSize=10, textColor=colors.grey, spaceAfter=12)
+
+    story.append(Paragraph(f"Order Deletion Log", title_style))
+    story.append(Paragraph(f"{restaurant.name if restaurant else ''} · {target.strftime('%d %B %Y')}", sub_style))
+    story.append(Spacer(1, 0.3*cm))
+
+    if not q:
+        story.append(Paragraph("No deleted orders for this date.", styles["Normal"]))
+    else:
+        total_deleted = sum(l.order_total for l in q)
+        story.append(Paragraph(f"Total deleted orders: <b>{len(q)}</b> · Total value: <b>₹{total_deleted:,.2f}</b>", styles["Normal"]))
+        story.append(Spacer(1, 0.4*cm))
+
+        headers = ["Order No.", "Items", "Amount", "Payment", "Table", "Deleted By", "Reason", "Time"]
+        data = [headers]
+        for l in q:
+            items_str = ", ".join([f"{i['name']} x{i['qty']}" for i in (l.order_items or [])]) or "-"
+            t = l.deleted_at.strftime("%H:%M") if l.deleted_at else "-"
+            data.append([
+                l.order_number, items_str[:40], f"Rs.{l.order_total:.0f}",
+                (l.payment_method or "-").upper(), l.table_number or "-",
+                l.deleted_by_name or "-", l.reason or "-", t,
+            ])
+
+        col_widths = [2.5*cm, 4.5*cm, 1.8*cm, 1.8*cm, 1.5*cm, 2.5*cm, 3*cm, 1.4*cm]
+        tbl = Table(data, colWidths=col_widths, repeatRows=1)
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#128C7E")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F9FAFB")]),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#E5E7EB")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("PADDING", (0, 0), (-1, -1), 4),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#FEF2F2")]),
+        ]))
+        story.append(tbl)
+
+    story.append(Spacer(1, 0.5*cm))
+    story.append(Paragraph(f"Generated on {datetime.now().strftime('%d %b %Y %H:%M')} · DOVIC AI Restaurant OS", sub_style))
+
+    doc.build(story)
+    buf.seek(0)
+    filename = f"deletion_log_{target.isoformat()}.pdf"
+    return StreamingResponse(buf, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
 @router.get("/revenue-chart")
 def revenue_chart(
     restaurant_id: int,

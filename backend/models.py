@@ -356,6 +356,24 @@ class AIReport(Base):
 
 # ─── WhatsApp Sessions ───────────────────────────────────────────────────────
 
+class OrderDeletionLog(Base):
+    __tablename__ = "order_deletion_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), nullable=False)
+    order_id = Column(Integer, nullable=False)
+    order_number = Column(String(30), nullable=False)
+    order_total = Column(Float, nullable=False)
+    order_items = Column(JSON, nullable=True)
+    payment_method = Column(String(20), nullable=True)
+    table_number = Column(String(20), nullable=True)
+    reason = Column(Text, nullable=True)
+    deleted_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    deleted_by_name = Column(String(255), nullable=True)
+    deleted_at = Column(DateTime, server_default=func.now())
+    original_created_at = Column(DateTime, nullable=True)
+
+
 class WhatsAppSession(Base):
     __tablename__ = "whatsapp_sessions"
 

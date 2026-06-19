@@ -82,6 +82,9 @@ export const inventoryApi = {
 export const salesApi = {
   orders: (rid: number, params?: any) => api.get(`/restaurants/${rid}/sales/orders`, { params }),
   createOrder: (rid: number, data: any) => api.post(`/restaurants/${rid}/sales/orders`, data),
+  deleteOrder: (rid: number, orderId: number, reason: string) => api.delete(`/restaurants/${rid}/sales/orders/${orderId}`, { params: { reason } }),
+  deletionLog: (rid: number, log_date?: string) => api.get(`/restaurants/${rid}/sales/deletion-log`, { params: { log_date } }),
+  deletionLogPdfUrl: (rid: number, log_date: string) => `${API_BASE}/api/v1/restaurants/${rid}/sales/deletion-log/pdf?log_date=${log_date}`,
   summary: (rid: number, period?: string) => api.get(`/restaurants/${rid}/sales/summary`, { params: { period } }),
   topItems: (rid: number, days?: number) => api.get(`/restaurants/${rid}/sales/top-items`, { params: { days } }),
   revenueChart: (rid: number, days?: number) => api.get(`/restaurants/${rid}/sales/revenue-chart`, { params: { days } }),
