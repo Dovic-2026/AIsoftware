@@ -14,6 +14,7 @@ function LoginForm() {
   const params = useSearchParams();
   const [mode, setMode] = useState<"login" | "register">(params.get("mode") === "register" ? "register" : "login");
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState("Signing in…");
   const { setAuth, token, restaurant, _hasHydrated } = useAuthStore();
 
   // Redirect if already logged in (wait for hydration first)
@@ -30,6 +31,10 @@ function LoginForm() {
 
   const onSubmit = async (data: any) => {
     setLoading(true);
+    setLoadingMsg("Connecting to server…");
+    // After 4s show a friendlier message (Render cold start)
+    const slowTimer = setTimeout(() => setLoadingMsg("Server is waking up, please wait…"), 4000);
+    const slowerTimer = setTimeout(() => setLoadingMsg("Almost there, hang tight…"), 15000);
     try {
       let res;
       if (mode === "register") {
@@ -47,9 +52,13 @@ function LoginForm() {
         router.replace("/app");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || "Something went wrong");
+      const msg = err.response?.data?.detail || (err.code === "ECONNABORTED" ? "Server took too long. Please try again." : "Something went wrong");
+      toast.error(msg);
     } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(slowerTimer);
       setLoading(false);
+      setLoadingMsg("Signing in…");
     }
   };
 
@@ -128,7 +137,7 @@ function LoginForm() {
               disabled={loading}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white text-base font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-200 active:scale-95 transition-transform disabled:opacity-70 mt-2"
             >
-              {loading ? <Spinner /> : (mode === "login" ? "Sign In →" : "Create Account →")}
+              {loading ? <><Spinner /><span className="text-[13px]">{loadingMsg}</span></> : (mode === "login" ? "Sign In →" : "Create Account →")}
             </button>
           </form>
 
