@@ -6,7 +6,7 @@ const TABS = [
   { href: "/app/pos", label: "Order", emoji: "🛒" },
   { href: "/app/menu", label: "Menu", emoji: "🍽️" },
   { href: "/app/sales", label: "Sales", emoji: "💰" },
-  { href: "/app/stock", label: "Stock", emoji: "📦" },
+  { href: "/app/staff", label: "Staff", emoji: "👥" },
 ];
 
 export default function BottomNav() {
